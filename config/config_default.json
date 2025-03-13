@@ -1,0 +1,6 @@
+{
+  "mongoURI": "mongodb://localhost:27017/jobactual",
+  "jwtSecret": "your_jwt_secret",
+  "jwtExpiration": 2592000,
+  "googleMapsApiKey": "google_maps_api_key"
+} 

@@ -1,0 +1,225 @@
+{
+  "info": {
+    "name": "JobActual API",
+    "description": "API endpoints for JobActual application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"userType\": \"recruiter\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new user"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"recruiter@jobactual.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login and get auth token"
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/auth",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth"]
+            },
+            "description": "Get current user data"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "Create Company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-auth-token",
+                "value": "{{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Company\",\n  \"website\": \"https://testcompany.com\",\n  \"industry\": \"Technology\",\n  \"location\": \"New York\",\n  \"description\": \"A test company\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/companies",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "companies"]
+            },
+            "description": "Create a new company (requires recruiter role)"
+          }
+        },
+        {
+          "name": "Get All Companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/companies",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "companies"]
+            },
+            "description": "Get all companies (public)"
+          }
+        },
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/companies/:id",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "companies", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "company-id-here"
+                }
+              ]
+            },
+            "description": "Get a specific company by ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Create Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-auth-token",
+                "value": "{{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Software Engineer\",\n  \"description\": \"We are looking for a software engineer\",\n  \"location\": \"New York, NY\",\n  \"jobType\": \"full-time\",\n  \"experienceLevel\": \"mid\",\n  \"skills\": [\"JavaScript\", \"React\", \"Node.js\"],\n  \"salaryMin\": 80000,\n  \"salaryMax\": 120000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/jobs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "jobs"]
+            },
+            "description": "Create a new job posting (requires recruiter role)"
+          }
+        },
+        {
+          "name": "Get All Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/jobs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "jobs"]
+            },
+            "description": "Get all job postings (public)"
+          }
+        },
+        {
+          "name": "Get Recruiter Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/jobs/recruiter",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "jobs", "recruiter"]
+            },
+            "description": "Get jobs posted by the current recruiter"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiZGJiYjBmNWItYjk5NC00YWUxLWJiZGEtYWE5MDk4YjRkNmUwIn0sImlhdCI6MTc0MDk4MDU4NiwiZXhwIjoxNzQzNTcyNTg2fQ.xyu5a2il5RoMIuF0fuorXYLThqPYQM7BWm4yfS0GjTM"
+    }
+  ]
+} 
