@@ -14,12 +14,9 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
-      }}
-    >
+    <Stack screenOptions={{ headerShown: true }}>
       <Stack.Screen name="index" options={{ title: 'Recruit Swipe' }} />
+      <Stack.Screen name="connect" options={{ title: 'Connect ATS' }} />
     </Stack>
   );
 }
