@@ -8,7 +8,10 @@ set check_function_bodies = off;
 -- ============================================================================
 
 create extension if not exists pgcrypto;
-create extension if not exists pgsodium;
+-- Symmetric encryption (pgsodium / Supabase Vault) is wired up in phase 4
+-- when integration credentials are first written. For now the
+-- `integrations.credentials_encrypted bytea` column just holds opaque bytes;
+-- nothing reads or decrypts it yet.
 
 -- ============================================================================
 -- Tables
@@ -27,6 +30,7 @@ create table public.integrations (
   user_id uuid not null references auth.users(id) on delete cascade,
   provider text not null,
   display_label text,
+  -- Will be encrypted in phase 4; currently any non-null bytea is accepted.
   credentials_encrypted bytea not null,
   status text not null default 'active' check (status in ('active','expired','revoked')),
   connected_at timestamptz not null default now(),

@@ -29,13 +29,25 @@ Press `a` to launch on Android, `i` on iOS (macOS host required for the simulato
 
 Anything prefixed `EXPO_PUBLIC_` is inlined into the JS bundle. **Do not put server secrets in `.env`** — ATS credentials live in Supabase encrypted with pgsodium and are decrypted only inside edge functions.
 
-## Running Supabase locally
+## Supabase CLI
 
-```bash
-# requires the Supabase CLI: https://supabase.com/docs/guides/cli
-supabase start            # spins up Postgres + Auth + Edge runtime locally
-supabase db reset         # applies migrations and seeds the mock provider
-supabase functions serve  # serves edge functions on http://127.0.0.1:54321/functions/v1
+The Supabase CLI is a project dev dependency — use it via `npx supabase ...` (no global install needed). Docs: https://supabase.com/docs/guides/cli
+
+### Connecting to your hosted Supabase project
+
+```powershell
+npx supabase login                         # one-time browser auth
+npx supabase link --project-ref <ref>      # ref is in your Supabase dashboard URL
+npx supabase db push                       # applies supabase/migrations/*.sql to the linked project
+npx supabase functions deploy ats-proxy    # deploys an edge function (later phases)
+```
+
+### Local Supabase (optional, for offline dev)
+
+```powershell
+npx supabase start            # spins up Postgres + Auth + Edge runtime locally (needs Docker Desktop)
+npx supabase db reset         # applies migrations and seeds the mock provider
+npx supabase functions serve  # serves edge functions on http://127.0.0.1:54321/functions/v1
 ```
 
 Local URLs:
@@ -44,7 +56,7 @@ Local URLs:
 - API: http://127.0.0.1:54321
 - Inbucket (test email): http://127.0.0.1:54324
 
-Set `.env` to point at `http://127.0.0.1:54321` to use the local stack from the app.
+To run the app against local Supabase, point `.env` at `http://127.0.0.1:54321`.
 
 ## Project layout
 
