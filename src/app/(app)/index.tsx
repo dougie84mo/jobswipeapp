@@ -4,17 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { signOut } from '@/features/auth/auth-actions';
 import { useSession } from '@/features/auth/SessionProvider';
-import { getSupabase } from '@/lib/supabase';
 
 export default function HomeScreen() {
   const session = useSession();
   const email =
     session.status === 'ready' && session.session ? session.session.user.email : undefined;
 
-  async function signOut() {
+  async function handleSignOut() {
     try {
-      await getSupabase().auth.signOut();
+      await signOut();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign-out failed';
       Alert.alert('Sign-out failed', message);
@@ -39,7 +39,7 @@ export default function HomeScreen() {
         </ThemedView>
 
         <Pressable
-          onPress={signOut}
+          onPress={handleSignOut}
           style={({ pressed }) => [styles.signOut, pressed && styles.pressed]}
         >
           <ThemedText themeColor="textSecondary">Sign out</ThemedText>
