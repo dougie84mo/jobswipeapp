@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+In windows command prompt and powershell ALWAYS use the "|" operator instead of the "&&" operator when chaining command together.
+
