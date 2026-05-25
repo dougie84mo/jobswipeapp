@@ -1,30 +1,46 @@
 import 'react-native-url-polyfill/auto';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 
-function readExtra(name: string): string {
+function readEnv(name: string): string | undefined {
   const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
-  const fromExtra = extra[name];
-  const fromEnv = process.env[name];
-  const value = fromExtra ?? fromEnv;
-  if (!value) {
-    throw new Error(
-      `Missing ${name}. Set it in .env (EXPO_PUBLIC_*) or app.config.ts extra.`,
-    );
-  }
-  return value;
+  return extra[name] ?? process.env[name];
 }
 
-const SUPABASE_URL = readExtra('EXPO_PUBLIC_SUPABASE_URL');
-const SUPABASE_ANON_KEY = readExtra('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+export class SupabaseNotConfiguredError extends Error {
+  constructor() {
+    super(
+      'Supabase is not configured. Set EXPO_PUBLIC_SUPABASE_URL and ' +
+        'EXPO_PUBLIC_SUPABASE_ANON_KEY in .env (see .env.example), then reload.',
+    );
+    this.name = 'SupabaseNotConfiguredError';
+  }
+}
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
+let cached: SupabaseClient | null = null;
+
+export function getSupabase(): SupabaseClient {
+  if (cached) return cached;
+  const url = readEnv('EXPO_PUBLIC_SUPABASE_URL');
+  const anon = readEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+  if (!url || !anon) throw new SupabaseNotConfiguredError();
+  cached = createClient(url, anon, {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  });
+  return cached;
+}
+
+export function isSupabaseConfigured(): boolean {
+  return Boolean(readEnv('EXPO_PUBLIC_SUPABASE_URL') && readEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY'));
+}
+
+export function getAuthRedirectUri(): string | undefined {
+  return readEnv('EXPO_PUBLIC_AUTH_REDIRECT_URI');
+}
