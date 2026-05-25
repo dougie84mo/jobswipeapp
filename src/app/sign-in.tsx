@@ -13,10 +13,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useTheme } from '@/hooks/use-theme';
 import { getAuthRedirectUri, getSupabase } from '@/lib/supabase';
 
 export default function SignInScreen() {
   const session = useSession();
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -90,12 +92,12 @@ export default function SignInScreen() {
             value={email}
             onChangeText={setEmail}
             placeholder="you@company.com"
-            placeholderTextColor="#888"
+            placeholderTextColor={theme.textSecondary}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect={false}
-            style={styles.input}
+            style={[styles.input, { color: theme.text }]}
             editable={!submitting}
             onSubmitEditing={sendMagicLink}
           />
@@ -127,7 +129,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: Spacing.three,
     fontSize: 16,
-    color: 'inherit' as never,
   },
   button: {
     backgroundColor: '#208AEF',
