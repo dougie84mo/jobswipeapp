@@ -162,11 +162,11 @@ export default function ProfileScreen() {
         </ThemedView>
 
         <ThemedView type="backgroundElement" style={styles.section}>
-          <ThemedText type="smallBold">Integrations</ThemedText>
+          <ThemedText type="smallBold">Sources</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Connect an ATS so candidates show up on the Connections tab.
-            Job board integrations (Indeed, ZipRecruiter, …) are on the
-            roadmap.
+            Connect an ATS or job board so candidates show up on the
+            Connections tab. Job-board partner APIs (Indeed, ZipRecruiter)
+            land here as they go live.
           </ThemedText>
           <Pressable
             onPress={() => router.push('/connect')}
@@ -175,7 +175,9 @@ export default function ProfileScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <ThemedText style={styles.primaryButtonText}>Connect ATS</ThemedText>
+            <ThemedText style={styles.primaryButtonText}>
+              Connect a source
+            </ThemedText>
           </Pressable>
         </ThemedView>
 

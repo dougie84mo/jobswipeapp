@@ -50,10 +50,12 @@ export default function HomeScreen() {
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="subtitle">How Recruit Swipe works</ThemedText>
           <ThemedText>
-            • Connect your ATS (Greenhouse, Ashby, mock for demo){'\n'}
+            • Connect a source — ATS (Greenhouse, Ashby, Lever, Workable,
+            Recruitee, mock) or job board (Indeed, ZipRecruiter — partner
+            access required){'\n'}
             • Pick a requisition to source against{'\n'}
             • Swipe right / left / up to advance, pass, or boost{'\n'}
-            • Configure what each swipe does in the ATS per integration
+            • Configure what each swipe does per connection
           </ThemedText>
         </ThemedView>
 
@@ -84,11 +86,11 @@ export default function HomeScreen() {
             </>
           ) : (
             <>
-              <ThemedText type="smallBold">No ATS connected yet</ThemedText>
+              <ThemedText type="smallBold">No sources connected yet</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Connect an ATS to start sourcing candidates. The mock provider
-                has demo data so you can try the swipe deck without a real
-                account.
+                Connect an ATS or job board to start sourcing candidates. The
+                mock provider has demo data so you can try the swipe deck
+                without a real account.
               </ThemedText>
               <Pressable
                 onPress={() => router.push('/connect')}
@@ -98,7 +100,7 @@ export default function HomeScreen() {
                 ]}
               >
                 <ThemedText style={styles.primaryButtonText}>
-                  Connect your first ATS
+                  Connect your first source
                 </ThemedText>
               </Pressable>
             </>

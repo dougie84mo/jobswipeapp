@@ -22,7 +22,7 @@ import {
 } from '@/features/integrations/queries';
 import { useTheme } from '@/hooks/use-theme';
 import { testConnection } from '@/ats/client';
-import type { ProviderId } from '@/ats/types';
+import { sourceKindFor, type ProviderId, type SourceKind } from '@/ats/types';
 
 // Providers whose adapter is implemented and connectable from the app today.
 // Add the next provider's id here in the same PR that ships its adapter.
@@ -130,6 +130,28 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   teamtailor: { name: 'Teamtailor', subtitle: 'API key', ready: false, authType: 'api_key' },
   icims: { name: 'iCIMS', subtitle: 'OAuth', ready: false, authType: 'oauth' },
   manatal: { name: 'Manatal', subtitle: 'API key', ready: false, authType: 'api_key' },
+  indeed: {
+    name: 'Indeed',
+    subtitle: 'Partner API — request access via Indeed for Employers',
+    ready: false,
+    authType: 'oauth',
+  },
+  ziprecruiter: {
+    name: 'ZipRecruiter',
+    subtitle: 'Partner API — request access via ZipRecruiter for Employers',
+    ready: false,
+    authType: 'api_key',
+  },
+};
+
+const SOURCE_KIND_LABEL: Record<SourceKind, string> = {
+  ats: 'Applicant Tracking Systems',
+  job_board: 'Job Boards',
+};
+
+const SOURCE_KIND_SUBTITLE: Record<SourceKind, string> = {
+  ats: 'Pull candidates from your existing pipeline and push swipe outcomes back.',
+  job_board: 'Source applicants who applied through a posting and save the good ones.',
 };
 
 export default function ConnectScreen() {
@@ -233,10 +255,18 @@ export default function ConnectScreen() {
   const entries = Object.entries(PROVIDER_META).sort(
     ([, a], [, b]) => Number(b.ready) - Number(a.ready),
   );
+  const grouped: Record<SourceKind, [string, ProviderMeta][]> = {
+    ats: [],
+    job_board: [],
+  };
+  for (const entry of entries) {
+    const kind = sourceKindFor(entry[0] as ProviderId);
+    grouped[kind].push(entry);
+  }
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: 'Connect ATS' }} />
+      <Stack.Screen options={{ title: 'Connect a source' }} />
       <SafeAreaView
         style={styles.safeArea}
         edges={['bottom', 'left', 'right']}
@@ -252,12 +282,26 @@ export default function ConnectScreen() {
             showsVerticalScrollIndicator={false}
           >
             <ThemedText themeColor="textSecondary">
-              Pick the ATS you want to source from. Recruit Swipe will pull open
-              requisitions and candidates and write swipe outcomes back through
-              the same connection.
+              Pick the source you want to swipe through. Recruit Swipe pulls
+              candidates from ATSes and applicants from job boards, all into
+              the same deck — swipe right / left / up to advance, pass, or
+              boost.
             </ThemedText>
 
-            {entries.map(([provider, meta]) => {
+            {(['ats', 'job_board'] as SourceKind[]).map((kind) => {
+              const groupEntries = grouped[kind];
+              if (groupEntries.length === 0) return null;
+              return (
+                <View key={kind} style={styles.group}>
+                  <View style={styles.groupHeader}>
+                    <ThemedText type="smallBold">
+                      {SOURCE_KIND_LABEL[kind]}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {SOURCE_KIND_SUBTITLE[kind]}
+                    </ThemedText>
+                  </View>
+                  {groupEntries.map(([provider, meta]) => {
           const connectable = CONNECTABLE_PROVIDERS.includes(provider as ProviderId);
           const isExpanded = expanded === provider;
           const isBusy = busy === provider;
@@ -393,6 +437,9 @@ export default function ConnectScreen() {
             </ThemedView>
           );
         })}
+                </View>
+              );
+            })}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -413,6 +460,8 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingBottom: Spacing.six,
   },
+  group: { gap: Spacing.three, marginTop: Spacing.two },
+  groupHeader: { gap: Spacing.half },
   card: {
     padding: Spacing.three,
     borderRadius: Spacing.three,

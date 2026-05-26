@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,8 +11,14 @@ import {
   useIntegrations,
   type IntegrationRow,
 } from '@/features/integrations/queries';
+import { sourceKindFor, type ProviderId, type SourceKind } from '@/ats/types';
 
-export default function HomeScreen() {
+const KIND_LABEL: Record<SourceKind, string> = {
+  ats: 'Applicant Tracking Systems',
+  job_board: 'Job Boards',
+};
+
+export default function ConnectionsScreen() {
   const session = useSession();
   const integrationsQuery = useIntegrations();
 
@@ -20,44 +27,65 @@ export default function HomeScreen() {
       ? session.session.user.email
       : undefined;
 
+  const rows = integrationsQuery.data ?? [];
+  // Bucket connected sources by kind so each group renders under its own
+  // header. Order: ATS first, job boards second.
+  const grouped = useMemo(() => {
+    const buckets: Record<SourceKind, IntegrationRow[]> = { ats: [], job_board: [] };
+    for (const row of rows) {
+      buckets[sourceKindFor(row.provider as ProviderId)].push(row);
+    }
+    return buckets;
+  }, [rows]);
+
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.inner} edges={['left', 'right']}>
-        <View style={styles.header}>
-          {email ? (
-            <ThemedText themeColor="textSecondary">Signed in as {email}</ThemedText>
-          ) : null}
-        </View>
+      <SafeAreaView style={styles.flex} edges={['left', 'right']}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            {email ? (
+              <ThemedText themeColor="textSecondary">Signed in as {email}</ThemedText>
+            ) : null}
+          </View>
 
-        {integrationsQuery.isLoading ? (
-          <ThemedText themeColor="textSecondary">Loading…</ThemedText>
-        ) : integrationsQuery.isError ? (
-          <ThemedText themeColor="textSecondary">
-            Couldn’t load integrations: {toMessage(integrationsQuery.error)}
-          </ThemedText>
-        ) : (integrationsQuery.data ?? []).length === 0 ? (
-          <ThemedView type="backgroundElement" style={styles.empty}>
-            <ThemedText type="smallBold">No ATS connected yet</ThemedText>
+          {integrationsQuery.isLoading ? (
+            <ThemedText themeColor="textSecondary">Loading…</ThemedText>
+          ) : integrationsQuery.isError ? (
             <ThemedText themeColor="textSecondary">
-              Open the Profile tab and tap Connect ATS to add your first one.
-              The mock provider has demo data so you can try the swipe deck
-              without a real account.
+              Couldn’t load connections: {toMessage(integrationsQuery.error)}
             </ThemedText>
-          </ThemedView>
-        ) : (
-          <FlatList
-            data={integrationsQuery.data}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <IntegrationCard
-                item={item}
-                onPress={() => router.push(`/integration/${item.id}`)}
-              />
-            )}
-            ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
-          />
-        )}
+          ) : rows.length === 0 ? (
+            <ThemedView type="backgroundElement" style={styles.empty}>
+              <ThemedText type="smallBold">No sources connected yet</ThemedText>
+              <ThemedText themeColor="textSecondary">
+                Open the Profile tab and tap Connect a source to add your first
+                ATS or job board. The mock provider has demo data so you can try
+                the swipe deck without a real account.
+              </ThemedText>
+            </ThemedView>
+          ) : (
+            (['ats', 'job_board'] as SourceKind[]).map((kind) => {
+              const group = grouped[kind];
+              if (group.length === 0) return null;
+              return (
+                <View key={kind} style={styles.group}>
+                  <ThemedText type="smallBold">{KIND_LABEL[kind]}</ThemedText>
+                  {group.map((item) => (
+                    <IntegrationCard
+                      key={item.id}
+                      item={item}
+                      onPress={() => router.push(`/integration/${item.id}`)}
+                    />
+                  ))}
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -71,6 +99,7 @@ function IntegrationCard({
   onPress: () => void;
 }) {
   const connectedAt = new Date(item.connected_at);
+  const kind = sourceKindFor(item.provider as ProviderId);
   return (
     <Pressable
       onPress={onPress}
@@ -84,12 +113,15 @@ function IntegrationCard({
           <ThemedText type="smallBold">
             {item.display_label ?? providerLabel(item.provider)}
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {item.status}
-          </ThemedText>
+          <View style={styles.kindPill}>
+            <ThemedText type="small">
+              {kind === 'job_board' ? 'Job board' : 'ATS'}
+            </ThemedText>
+          </View>
         </View>
         <ThemedText type="small" themeColor="textSecondary">
-          {providerLabel(item.provider)} • connected {connectedAt.toLocaleDateString()}
+          {providerLabel(item.provider)} • {item.status} • connected{' '}
+          {connectedAt.toLocaleDateString()}
         </ThemedText>
       </ThemedView>
     </Pressable>
@@ -106,6 +138,14 @@ function providerLabel(provider: string): string {
       return 'Ashby';
     case 'lever':
       return 'Lever';
+    case 'workable':
+      return 'Workable';
+    case 'recruitee':
+      return 'Recruitee';
+    case 'indeed':
+      return 'Indeed';
+    case 'ziprecruiter':
+      return 'ZipRecruiter';
     default:
       return provider;
   }
@@ -117,19 +157,19 @@ function toMessage(err: unknown): string {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { flex: 1, padding: Spacing.four, gap: Spacing.four },
-  header: { gap: Spacing.one },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  flex: { flex: 1 },
+  scrollContent: {
+    padding: Spacing.four,
+    gap: Spacing.four,
+    paddingBottom: Spacing.six,
   },
+  header: { gap: Spacing.one },
+  group: { gap: Spacing.two },
   empty: {
     padding: Spacing.four,
     borderRadius: Spacing.three,
     gap: Spacing.two,
   },
-  listContent: { paddingBottom: Spacing.three },
   cardPressable: { borderRadius: Spacing.three },
   card: {
     padding: Spacing.three,
@@ -140,6 +180,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  kindPill: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: 999,
+    backgroundColor: 'rgba(127,127,127,0.18)',
   },
   pressed: { opacity: 0.7 },
 });

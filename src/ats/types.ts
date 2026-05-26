@@ -6,6 +6,7 @@
 // capabilities() instead.
 
 export type ProviderId =
+  // Applicant Tracking Systems
   | 'greenhouse'
   | 'lever'
   | 'workable'
@@ -18,9 +19,40 @@ export type ProviderId =
   | 'teamtailor'
   | 'icims'
   | 'manatal'
-  | 'mock';
+  | 'mock'
+  // Job boards
+  | 'indeed'
+  | 'ziprecruiter';
 
 export type AuthType = 'oauth2' | 'api_key' | 'basic';
+
+// What kind of recruiting surface a provider exposes. Drives UI grouping on
+// the Connect and Connections screens, and may influence which swipe actions
+// are meaningful (job boards generally don't have a pipeline to advance
+// through; they have applicants to save to your ATS).
+export type SourceKind = 'ats' | 'job_board';
+
+export const PROVIDER_KIND: Record<ProviderId, SourceKind> = {
+  mock: 'ats',
+  greenhouse: 'ats',
+  lever: 'ats',
+  workable: 'ats',
+  ashby: 'ats',
+  smartrecruiters: 'ats',
+  workday: 'ats',
+  bamboohr: 'ats',
+  jazzhr: 'ats',
+  recruitee: 'ats',
+  teamtailor: 'ats',
+  icims: 'ats',
+  manatal: 'ats',
+  indeed: 'job_board',
+  ziprecruiter: 'job_board',
+};
+
+export function sourceKindFor(provider: ProviderId): SourceKind {
+  return PROVIDER_KIND[provider];
+}
 
 export interface AuthContext {
   userId: string;
