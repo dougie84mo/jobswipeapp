@@ -1,6 +1,16 @@
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -45,8 +55,10 @@ export default function ProfileScreen() {
   if (session.status === 'loading') {
     return (
       <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.inner}>
-          <ThemedText>Loading…</ThemedText>
+        <SafeAreaView style={styles.flex}>
+          <View style={styles.loadingInner}>
+            <ThemedText>Loading…</ThemedText>
+          </View>
         </SafeAreaView>
       </ThemedView>
     );
@@ -83,7 +95,17 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.flex} edges={['bottom', 'left', 'right']}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <ThemedView type="backgroundElement" style={styles.section}>
           <ThemedText type="smallBold">Account</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
@@ -177,6 +199,8 @@ export default function ProfileScreen() {
         >
           <ThemedText style={{ color: '#E5484D', fontWeight: '600' }}>Sign out</ThemedText>
         </Pressable>
+        </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -184,7 +208,13 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { flex: 1, padding: Spacing.four, gap: Spacing.three },
+  flex: { flex: 1 },
+  scrollContent: {
+    padding: Spacing.four,
+    gap: Spacing.three,
+    paddingBottom: Spacing.six,
+  },
+  loadingInner: { flex: 1, padding: Spacing.four },
   section: {
     padding: Spacing.three,
     borderRadius: Spacing.three,

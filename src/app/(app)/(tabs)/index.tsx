@@ -1,5 +1,5 @@
 import { Link, router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -34,7 +34,12 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.flex} edges={['bottom', 'left', 'right']}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.header}>
           <ThemedText type="title">{greeting}</ThemedText>
           {email ? (
@@ -99,6 +104,7 @@ export default function HomeScreen() {
             </>
           )}
         </ThemedView>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -106,7 +112,12 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { flex: 1, padding: Spacing.four, gap: Spacing.four },
+  flex: { flex: 1 },
+  scrollContent: {
+    padding: Spacing.four,
+    gap: Spacing.four,
+    paddingBottom: Spacing.six,
+  },
   header: { gap: Spacing.one },
   card: {
     padding: Spacing.four,

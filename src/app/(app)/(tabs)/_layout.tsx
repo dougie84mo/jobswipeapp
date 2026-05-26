@@ -1,14 +1,18 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
 // Bottom tab navigator.
 //
-// Home is the landing dashboard — who's signed in, how the workflow goes,
-// what they should do next. Connections is the integrations list the
+// Home is the landing dashboard. Connections is the integrations list the
 // swipe flow starts from. Profile holds account settings and the
 // Connect ATS entry-point button.
 //
 // Detail screens (integration/[id]/*, swipe/[reqId], connect) live in the
 // parent (app) Stack so pushing to them hides the tab bar.
+//
+// Icons use Ionicons for a matched set; the outline variant renders when
+// the tab is inactive and the filled variant when active so the recruiter
+// gets a clear focused-state signal on iOS and Android.
 
 export default function TabsLayout() {
   return (
@@ -16,6 +20,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: true,
         tabBarLabelPosition: 'below-icon',
+        tabBarActiveTintColor: '#208AEF',
       }}
     >
       <Tabs.Screen
@@ -23,6 +28,13 @@ export default function TabsLayout() {
         options={{
           title: 'Recruit Swipe',
           tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -30,6 +42,13 @@ export default function TabsLayout() {
         options={{
           title: 'Connections',
           tabBarLabel: 'Connections',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'link' : 'link-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -37,6 +56,13 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>
