@@ -7,14 +7,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useSession } from '@/features/auth/SessionProvider';
 import { useIntegration } from '@/features/integrations/queries';
 import { useRequisitions } from '@/features/integrations/requisitions';
 import {
   actionsForDirection,
   useIntegrationSettings,
 } from '@/features/integrations/settings';
+import { useRecruiterProfile } from '@/features/profile/queries';
 import { executeActions } from '@/features/swipes/execute-actions';
 import { useDeckCandidates, useRecordSwipe } from '@/features/swipes/queries';
+import { SwipeableCard } from '@/features/swipes/SwipeableCard';
 import type { Candidate, ExecutedAction, SwipeDirection } from '@/ats/types';
 
 export default function SwipeDeckScreen() {
@@ -33,6 +36,13 @@ export default function SwipeDeckScreen() {
   const candidatesQuery = useDeckCandidates(integration, reqId);
   const settingsQuery = useIntegrationSettings(integration?.id);
   const recordSwipe = useRecordSwipe();
+  const session = useSession();
+  const userId =
+    session.status === 'ready' && session.session
+      ? session.session.user.id
+      : undefined;
+  const profileQuery = useRecruiterProfile(userId);
+  const gestureSwiping = profileQuery.data?.app_prefs?.gesture_swiping ?? false;
 
   const [topIndex, setTopIndex] = useState(0);
   const [lastOutcome, setLastOutcome] = useState<ExecutedAction[] | null>(null);
@@ -111,7 +121,16 @@ export default function SwipeDeckScreen() {
           </ThemedView>
         ) : (
           <>
-            <CandidateCard candidate={current} />
+            <SwipeableCard
+              // Key on the candidate so each new card mounts fresh with
+              // translateX/Y at zero rather than carrying state from the
+              // previous card.
+              key={current.externalId}
+              enabled={gestureSwiping && !recordSwipe.isPending}
+              onSwipe={handleSwipe}
+            >
+              <CandidateCard candidate={current} />
+            </SwipeableCard>
             <View style={styles.actions}>
               <ActionButton
                 label="Pass"

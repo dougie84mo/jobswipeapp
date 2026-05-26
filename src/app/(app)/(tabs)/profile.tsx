@@ -46,6 +46,10 @@ export default function ProfileScreen() {
   // out rather than opt in.
   const pushEnabled = profileQuery.data?.notification_prefs?.push_enabled ?? true;
   const [pushPending, setPushPending] = useState(false);
+  // app_prefs.gesture_swiping defaults to false (migration 0011). Buttons-only
+  // is the safe default; gestures are an explicit opt-in.
+  const gestureSwiping = profileQuery.data?.app_prefs?.gesture_swiping ?? false;
+  const [gesturePending, setGesturePending] = useState(false);
 
   useEffect(() => {
     if (!dirty && profileQuery.data) {
@@ -72,6 +76,27 @@ export default function ProfileScreen() {
       );
     } finally {
       setPushPending(false);
+    }
+  }
+
+  async function handleToggleGestures(next: boolean) {
+    if (!userId) return;
+    setGesturePending(true);
+    try {
+      await updateProfile.mutateAsync({
+        userId,
+        app_prefs: {
+          ...(profileQuery.data?.app_prefs ?? {}),
+          gesture_swiping: next,
+        },
+      });
+    } catch (err) {
+      Alert.alert(
+        'Update failed',
+        err instanceof Error ? err.message : 'Unknown error',
+      );
+    } finally {
+      setGesturePending(false);
     }
   }
 
@@ -217,6 +242,24 @@ export default function ProfileScreen() {
               value={pushEnabled}
               onValueChange={handleTogglePush}
               disabled={pushPending || profileQuery.isLoading}
+            />
+          </View>
+        </ThemedView>
+
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <ThemedText type="smallBold">Swipe gestures</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Drag candidate cards left, right, or up instead of (or in
+                addition to) tapping Pass / Save / Boost. Buttons stay visible
+                either way.
+              </ThemedText>
+            </View>
+            <Switch
+              value={gestureSwiping}
+              onValueChange={handleToggleGestures}
+              disabled={gesturePending || profileQuery.isLoading}
             />
           </View>
         </ThemedView>

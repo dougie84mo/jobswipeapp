@@ -13,12 +13,18 @@ export interface NotificationPrefs {
   // per-integration filters, quiet-hours start/end, etc.
 }
 
+export interface AppPrefs {
+  gesture_swiping?: boolean;
+  // Future UI / behavior toggles: haptics, deck stack size, theme override.
+}
+
 export interface RecruiterProfile {
   user_id: string;
   display_name: string | null;
   org_name: string | null;
   avatar_url: string | null;
   notification_prefs: NotificationPrefs;
+  app_prefs: AppPrefs;
   created_at: string;
 }
 
@@ -32,7 +38,9 @@ export function useRecruiterProfile(userId: string | undefined) {
       if (!userId) return null;
       const { data, error } = await getSupabase()
         .from('recruiter_profiles')
-        .select('user_id, display_name, org_name, avatar_url, notification_prefs, created_at')
+        .select(
+          'user_id, display_name, org_name, avatar_url, notification_prefs, app_prefs, created_at',
+        )
         .eq('user_id', userId)
         .maybeSingle();
       if (error) throw error;
@@ -46,17 +54,19 @@ export interface UpdateProfileInput {
   display_name?: string | null;
   org_name?: string | null;
   notification_prefs?: NotificationPrefs;
+  app_prefs?: AppPrefs;
 }
 
 export function useUpdateRecruiterProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpdateProfileInput): Promise<void> => {
-      const patch: Record<string, string | NotificationPrefs | null> = {};
+      const patch: Record<string, string | NotificationPrefs | AppPrefs | null> = {};
       if (input.display_name !== undefined) patch.display_name = input.display_name;
       if (input.org_name !== undefined) patch.org_name = input.org_name;
       if (input.notification_prefs !== undefined)
         patch.notification_prefs = input.notification_prefs;
+      if (input.app_prefs !== undefined) patch.app_prefs = input.app_prefs;
       if (Object.keys(patch).length === 0) return;
       const { error } = await getSupabase()
         .from('recruiter_profiles')
