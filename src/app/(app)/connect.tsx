@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, Stack } from 'expo-router';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -18,6 +18,7 @@ import { Spacing } from '@/constants/theme';
 import {
   useCreateIntegration,
   useDeleteIntegration,
+  useIntegrations,
 } from '@/features/integrations/queries';
 import { useTheme } from '@/hooks/use-theme';
 import { testConnection } from '@/ats/client';
@@ -86,7 +87,12 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
 export default function ConnectScreen() {
   const create = useCreateIntegration();
   const remove = useDeleteIntegration();
+  const existing = useIntegrations();
   const theme = useTheme();
+  const connectedProviders = useMemo(
+    () => new Set((existing.data ?? []).map((i) => i.provider as ProviderId)),
+    [existing.data],
+  );
   const [busy, setBusy] = useState<ProviderId | null>(null);
   const [expanded, setExpanded] = useState<ProviderId | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -162,6 +168,7 @@ export default function ConnectScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Stack.Screen options={{ title: 'Connect ATS' }} />
       <SafeAreaView
         style={styles.safeArea}
         edges={['bottom', 'left', 'right']}
@@ -187,6 +194,7 @@ export default function ConnectScreen() {
           const isExpanded = expanded === provider;
           const isBusy = busy === provider;
           const isApiKey = meta.authType === 'api_key';
+          const alreadyConnected = connectedProviders.has(provider as ProviderId);
           return (
             <ThemedView key={provider} type="backgroundElement" style={styles.card}>
               <View style={styles.cardHeader}>
@@ -196,7 +204,15 @@ export default function ConnectScreen() {
                     {meta.subtitle}
                   </ThemedText>
                 </View>
-                {connectable ? (
+                {!connectable ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Coming soon
+                  </ThemedText>
+                ) : alreadyConnected ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Connected
+                  </ThemedText>
+                ) : (
                   <Pressable
                     onPress={() => handleConnectClick(provider as ProviderId)}
                     disabled={busy !== null}
@@ -214,10 +230,6 @@ export default function ConnectScreen() {
                           : 'Connect'}
                     </ThemedText>
                   </Pressable>
-                ) : (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Coming soon
-                  </ThemedText>
                 )}
               </View>
 

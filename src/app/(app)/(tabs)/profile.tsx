@@ -92,6 +92,24 @@ export default function ProfileScreen() {
         </ThemedView>
 
         <ThemedView type="backgroundElement" style={styles.section}>
+          <ThemedText type="smallBold">Integrations</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Connect an ATS so candidates show up on the Connections tab.
+            Job board integrations (Indeed, ZipRecruiter, …) are on the
+            roadmap.
+          </ThemedText>
+          <Pressable
+            onPress={() => router.push('/connect')}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <ThemedText style={styles.primaryButtonText}>Connect ATS</ThemedText>
+          </Pressable>
+        </ThemedView>
+
+        <ThemedView type="backgroundElement" style={styles.section}>
           <ThemedText type="smallBold">Display name</ThemedText>
           <TextInput
             value={displayName}
@@ -186,6 +204,14 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   saveButtonText: { color: 'white', fontWeight: '700' },
+  primaryButton: {
+    backgroundColor: '#208AEF',
+    paddingVertical: Spacing.three,
+    borderRadius: 999,
+    alignItems: 'center',
+    marginTop: Spacing.two,
+  },
+  primaryButtonText: { color: 'white', fontWeight: '700' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

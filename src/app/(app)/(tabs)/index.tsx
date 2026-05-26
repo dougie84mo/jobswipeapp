@@ -29,10 +29,6 @@ export default function HomeScreen() {
           ) : null}
         </View>
 
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle">Connected ATS</ThemedText>
-        </View>
-
         {integrationsQuery.isLoading ? (
           <ThemedText themeColor="textSecondary">Loading…</ThemedText>
         ) : integrationsQuery.isError ? (
@@ -43,8 +39,9 @@ export default function HomeScreen() {
           <ThemedView type="backgroundElement" style={styles.empty}>
             <ThemedText type="smallBold">No ATS connected yet</ThemedText>
             <ThemedText themeColor="textSecondary">
-              Tap Connect below to add your first ATS. The mock provider has
-              demo data so you can try the swipe deck without a real account.
+              Open the Profile tab and tap Connect ATS to add your first one.
+              The mock provider has demo data so you can try the swipe deck
+              without a real account.
             </ThemedText>
           </ThemedView>
         ) : (
