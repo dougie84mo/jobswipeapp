@@ -3,6 +3,7 @@
 //
 // Adding a new ATS: import the adapter and call registerAdapter below.
 
+import { ashbyAdapter } from './adapters/ashby';
 import { greenhouseAdapter } from './adapters/greenhouse';
 import { mockAdapter } from './adapters/mock';
 import { registerAdapter } from './registry';
@@ -13,5 +14,6 @@ export function bootstrapAdapters(): void {
   if (bootstrapped) return;
   registerAdapter(mockAdapter);
   registerAdapter(greenhouseAdapter);
+  registerAdapter(ashbyAdapter);
   bootstrapped = true;
 }

@@ -33,6 +33,16 @@ import {
   rejectApplication as ghReject,
   testConnection as ghTestConnection,
 } from '../_shared/greenhouse.ts';
+import {
+  addCandidateTag as ashbyAddTag,
+  changeStage as ashbyChangeStage,
+  createCandidateNote as ashbyCreateNote,
+  listCandidatesForRequisition as ashbyListCandidates,
+  listRequisitions as ashbyListRequisitions,
+  listStages as ashbyListStages,
+  listTags as ashbyListTags,
+  testConnection as ashbyTestConnection,
+} from '../_shared/ashby.ts';
 
 type Method =
   | 'testConnection'
@@ -137,7 +147,11 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'integration credentials are empty' }, 400);
   }
 
-  if (WRITE_METHODS.has(body.method) && !integration.on_behalf_of_user_id) {
+  if (
+    WRITE_METHODS.has(body.method) &&
+    providerRequiresOnBehalfOf(integration.provider) &&
+    !integration.on_behalf_of_user_id
+  ) {
     return jsonResponse(
       {
         error:
@@ -161,6 +175,12 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: message }, 502);
   }
 });
+
+function providerRequiresOnBehalfOf(provider: string): boolean {
+  // Greenhouse attributes every write to a Greenhouse user via On-Behalf-Of.
+  // Ashby's API key is the actor, so no separate user id is needed.
+  return provider === 'greenhouse';
+}
 
 function str(args: Record<string, unknown>, key: string): string {
   const v = args[key];
@@ -221,6 +241,44 @@ async function dispatch(
         return ghAddNote(
           apiKey,
           onBehalfOf!,
+          str(args, 'candidateExternalId'),
+          str(args, 'text'),
+        );
+    }
+  }
+  if (provider === 'ashby') {
+    switch (method) {
+      case 'testConnection':
+        return ashbyTestConnection(apiKey);
+      case 'listRequisitions':
+        return ashbyListRequisitions(apiKey);
+      case 'listCandidatesForRequisition':
+        return ashbyListCandidates(apiKey, str(args, 'requisitionExternalId'));
+      case 'listStages':
+        return ashbyListStages(apiKey, str(args, 'requisitionExternalId'));
+      case 'listTags':
+        return ashbyListTags(apiKey);
+      case 'advanceCandidateStage':
+        return ashbyChangeStage(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'requisitionExternalId'),
+          str(args, 'stageId'),
+        );
+      case 'rejectCandidate':
+        // Ashby's archive flow is provider-specific and isn't wired yet —
+        // surface as a clean failure so the executor logs it and moves on
+        // rather than silently skipping it as a capability gap.
+        throw new Error('Ashby reject is not implemented yet');
+      case 'addCandidateTag':
+        return ashbyAddTag(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'tagId'),
+        );
+      case 'addCandidateNote':
+        return ashbyCreateNote(
+          apiKey,
           str(args, 'candidateExternalId'),
           str(args, 'text'),
         );

@@ -16,7 +16,7 @@ import type { ProviderId } from '@/ats/types';
 
 // Providers whose adapter is implemented and connectable from the app today.
 // Add the next provider's id here in the same PR that ships its adapter.
-const CONNECTABLE_PROVIDERS: ProviderId[] = ['mock', 'greenhouse'];
+const CONNECTABLE_PROVIDERS: ProviderId[] = ['mock', 'greenhouse', 'ashby'];
 
 interface ProviderMeta {
   name: string;
@@ -50,7 +50,15 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   },
   lever: { name: 'Lever', subtitle: 'OAuth', ready: false, authType: 'oauth' },
   workable: { name: 'Workable', subtitle: 'OAuth', ready: false, authType: 'oauth' },
-  ashby: { name: 'Ashby', subtitle: 'API key', ready: false, authType: 'api_key' },
+  ashby: {
+    name: 'Ashby',
+    subtitle: 'Ashby API • API key auth',
+    ready: true,
+    authType: 'api_key',
+    apiKeyLabel: 'Ashby API key',
+    apiKeyHint:
+      'Settings → Integrations → Developer API. Grant scopes: candidatesRead, candidatesWrite, jobsRead, interviewsRead, hiringProcessMetadataRead.',
+  },
   smartrecruiters: {
     name: 'SmartRecruiters',
     subtitle: 'OAuth',
