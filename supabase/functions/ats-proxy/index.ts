@@ -13,10 +13,12 @@
 // capture yet — added in a follow-up alongside on_behalf_of_user_id on the
 // integrations row.
 //
-// Credentials are currently stored as plain UTF-8 bytea by create_integration
-// (see 0002_integration_rpc.sql). pgsodium / Supabase Vault encryption is the
-// next migration; decodeCredentialsToApiKey() is the seam where the decrypt
-// call slots in.
+// Credentials are encrypted at rest in vault.secrets (migration
+// 0006_vault_credentials.sql). The only chokepoint that returns plaintext
+// is the read_integration_credentials SECURITY DEFINER RPC, which verifies
+// the caller owns the integration before reading vault.decrypted_secrets.
+// We call it with the recruiter's JWT so the ownership check lines up with
+// the rest of RLS.
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
@@ -46,7 +48,6 @@ interface IntegrationRow {
   id: string;
   user_id: string;
   provider: string;
-  credentials_encrypted: string; // bytea exposed as base64 by PostgREST
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -60,31 +61,6 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
-}
-
-// create_integration writes UTF-8 bytes of the cleartext credential into
-// credentials_encrypted. PostgREST exposes that bytea as a base64 string with
-// no \x prefix. Decode → UTF-8 string. Phase 4b swaps this for pgsodium.
-function decodeCredentialsToApiKey(bytea: string): string {
-  try {
-    const cleaned = bytea.startsWith('\\x')
-      // Hex format fallback (some older PostgREST configs).
-      ? hexToString(bytea.slice(2))
-      : new TextDecoder().decode(
-          Uint8Array.from(atob(bytea), (c) => c.charCodeAt(0)),
-        );
-    return cleaned;
-  } catch {
-    return '';
-  }
-}
-
-function hexToString(hex: string): string {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-  }
-  return new TextDecoder().decode(bytes);
 }
 
 Deno.serve(async (req: Request) => {
@@ -124,7 +100,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: integrationRaw, error: lookupError } = await supabase
     .from('integrations')
-    .select('id, user_id, provider, credentials_encrypted')
+    .select('id, user_id, provider')
     .eq('id', body.integrationId)
     .maybeSingle();
 
@@ -136,8 +112,19 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'integration not found' }, 404);
   }
 
-  const apiKey = decodeCredentialsToApiKey(integration.credentials_encrypted);
-  if (!apiKey) {
+  // Decrypt under the recruiter's JWT — the RPC verifies ownership before
+  // touching vault.decrypted_secrets.
+  const { data: apiKey, error: credsError } = await supabase.rpc(
+    'read_integration_credentials',
+    { p_integration_id: body.integrationId },
+  );
+  if (credsError) {
+    return jsonResponse(
+      { error: `credentials read failed: ${credsError.message}` },
+      500,
+    );
+  }
+  if (!apiKey || typeof apiKey !== 'string') {
     return jsonResponse({ error: 'integration credentials are empty' }, 400);
   }
 
