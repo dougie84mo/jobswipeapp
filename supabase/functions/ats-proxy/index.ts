@@ -3,31 +3,34 @@
 // The mobile app calls this for every operation against a real ATS so OAuth
 // tokens and API keys never live on the device. The Authorization header
 // carries the recruiter's JWT; we use it to authenticate against the same
-// Postgres RLS the app sees, look up the integrations row, decode credentials,
-// dispatch to the right per-provider client, and return normalized data.
+// Postgres RLS the app sees, look up the integrations row, decrypt
+// credentials, dispatch to the right per-provider client, and return
+// normalized data.
 //
-// Today only Greenhouse is implemented for reads (testConnection,
-// listRequisitions, listCandidatesForRequisition, listStages, listTags).
-// Writes (advance_stage / reject / add_note / apply_tag) require Greenhouse's
-// On-Behalf-Of header pointing at a Greenhouse user id, which we don't
-// capture yet — added in a follow-up alongside on_behalf_of_user_id on the
-// integrations row.
+// Greenhouse: full coverage. Reads (testConnection, listRequisitions,
+// listCandidatesForRequisition, listStages, listTags) plus writes
+// (advanceStage, reject, addNote, applyTag). Writes need On-Behalf-Of —
+// stored on integrations.on_behalf_of_user_id (migration 0007). A write
+// against an integration with no on_behalf_of_user_id fails fast with a
+// clear message rather than silently posting as the wrong user.
 //
 // Credentials are encrypted at rest in vault.secrets (migration
 // 0006_vault_credentials.sql). The only chokepoint that returns plaintext
 // is the read_integration_credentials SECURITY DEFINER RPC, which verifies
 // the caller owns the integration before reading vault.decrypted_secrets.
-// We call it with the recruiter's JWT so the ownership check lines up with
-// the rest of RLS.
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 
 import {
+  addCandidateNote as ghAddNote,
+  advanceStage as ghAdvanceStage,
+  applyCandidateTag as ghApplyTag,
   listCandidatesForRequisition as ghListCandidates,
   listRequisitions as ghListRequisitions,
   listStages as ghListStages,
   listTags as ghListTags,
+  rejectApplication as ghReject,
   testConnection as ghTestConnection,
 } from '../_shared/greenhouse.ts';
 
@@ -36,7 +39,18 @@ type Method =
   | 'listRequisitions'
   | 'listCandidatesForRequisition'
   | 'listStages'
-  | 'listTags';
+  | 'listTags'
+  | 'advanceCandidateStage'
+  | 'rejectCandidate'
+  | 'addCandidateTag'
+  | 'addCandidateNote';
+
+const WRITE_METHODS: Set<Method> = new Set([
+  'advanceCandidateStage',
+  'rejectCandidate',
+  'addCandidateTag',
+  'addCandidateNote',
+]);
 
 interface RequestBody {
   integrationId: string;
@@ -48,6 +62,7 @@ interface IntegrationRow {
   id: string;
   user_id: string;
   provider: string;
+  on_behalf_of_user_id: string | null;
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -92,7 +107,6 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'edge function not configured' }, 500);
   }
 
-  // Use the caller's JWT so RLS scopes the integrations row lookup to them.
   const supabase = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: auth } },
     auth: { persistSession: false, autoRefreshToken: false },
@@ -100,7 +114,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: integrationRaw, error: lookupError } = await supabase
     .from('integrations')
-    .select('id, user_id, provider')
+    .select('id, user_id, provider, on_behalf_of_user_id')
     .eq('id', body.integrationId)
     .maybeSingle();
 
@@ -112,24 +126,35 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'integration not found' }, 404);
   }
 
-  // Decrypt under the recruiter's JWT — the RPC verifies ownership before
-  // touching vault.decrypted_secrets.
   const { data: apiKey, error: credsError } = await supabase.rpc(
     'read_integration_credentials',
     { p_integration_id: body.integrationId },
   );
   if (credsError) {
-    return jsonResponse(
-      { error: `credentials read failed: ${credsError.message}` },
-      500,
-    );
+    return jsonResponse({ error: `credentials read failed: ${credsError.message}` }, 500);
   }
   if (!apiKey || typeof apiKey !== 'string') {
     return jsonResponse({ error: 'integration credentials are empty' }, 400);
   }
 
+  if (WRITE_METHODS.has(body.method) && !integration.on_behalf_of_user_id) {
+    return jsonResponse(
+      {
+        error:
+          'Write actions require on_behalf_of_user_id on the integration. Set your Greenhouse user id when connecting.',
+      },
+      400,
+    );
+  }
+
   try {
-    const result = await dispatch(integration.provider, body.method, apiKey, body.args ?? {});
+    const result = await dispatch(
+      integration.provider,
+      body.method,
+      apiKey,
+      integration.on_behalf_of_user_id,
+      body.args ?? {},
+    );
     return jsonResponse({ data: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -137,10 +162,24 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+function str(args: Record<string, unknown>, key: string): string {
+  const v = args[key];
+  if (typeof v !== 'string' || v.length === 0) {
+    throw new Error(`ats-proxy: arg "${key}" is required`);
+  }
+  return v;
+}
+
+function strOpt(args: Record<string, unknown>, key: string): string | undefined {
+  const v = args[key];
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
 async function dispatch(
   provider: string,
   method: Method,
   apiKey: string,
+  onBehalfOf: string | null,
   args: Record<string, unknown>,
 ): Promise<unknown> {
   if (provider === 'greenhouse') {
@@ -149,18 +188,42 @@ async function dispatch(
         return ghTestConnection(apiKey);
       case 'listRequisitions':
         return ghListRequisitions(apiKey);
-      case 'listCandidatesForRequisition': {
-        const reqId = args.requisitionExternalId as string | undefined;
-        if (!reqId) throw new Error('requisitionExternalId required');
-        return ghListCandidates(apiKey, reqId);
-      }
-      case 'listStages': {
-        const reqId = args.requisitionExternalId as string | undefined;
-        if (!reqId) throw new Error('requisitionExternalId required');
-        return ghListStages(apiKey, reqId);
-      }
+      case 'listCandidatesForRequisition':
+        return ghListCandidates(apiKey, str(args, 'requisitionExternalId'));
+      case 'listStages':
+        return ghListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
         return ghListTags(apiKey);
+      case 'advanceCandidateStage':
+        return ghAdvanceStage(
+          apiKey,
+          onBehalfOf!,
+          str(args, 'candidateExternalId'),
+          str(args, 'requisitionExternalId'),
+          str(args, 'stageId'),
+        );
+      case 'rejectCandidate':
+        return ghReject(
+          apiKey,
+          onBehalfOf!,
+          str(args, 'candidateExternalId'),
+          str(args, 'requisitionExternalId'),
+          strOpt(args, 'reasonId'),
+        );
+      case 'addCandidateTag':
+        return ghApplyTag(
+          apiKey,
+          onBehalfOf!,
+          str(args, 'candidateExternalId'),
+          str(args, 'tagId'),
+        );
+      case 'addCandidateNote':
+        return ghAddNote(
+          apiKey,
+          onBehalfOf!,
+          str(args, 'candidateExternalId'),
+          str(args, 'text'),
+        );
     }
   }
   throw new Error(`ats-proxy: unsupported provider "${provider}" or method "${method}"`);

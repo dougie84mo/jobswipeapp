@@ -53,7 +53,8 @@ export default function SwipeDeckScreen() {
     let executedActions: ExecutedAction[] = [];
     try {
       executedActions = await executeActions(
-        integration.provider,
+        { id: integration.id, provider: integration.provider },
+        requisition.externalId,
         candidateAtSwipe,
         actions,
       );

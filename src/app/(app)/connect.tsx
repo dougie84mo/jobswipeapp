@@ -25,6 +25,8 @@ interface ProviderMeta {
   authType: 'none' | 'api_key' | 'oauth';
   apiKeyLabel?: string;
   apiKeyHint?: string;
+  onBehalfOfLabel?: string;
+  onBehalfOfHint?: string;
 }
 
 const PROVIDER_META: Record<string, ProviderMeta> = {
@@ -41,7 +43,10 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
     authType: 'api_key',
     apiKeyLabel: 'Greenhouse Harvest API key',
     apiKeyHint:
-      'Configure → Dev Center → API Credential Management → Manage API Keys. Use a Harvest API key with the "Get: List jobs" / "Get: List applications" / "Get: List candidates" / "Get: List job stages" / "Get: List tags" permissions.',
+      'Configure → Dev Center → API Credential Management → Manage API Keys. Grant Harvest read scopes (jobs / applications / candidates / job stages / tags) for sourcing, plus write scopes (move application / reject application / candidate notes / candidate tags) if you want swipe actions to fire in Greenhouse.',
+    onBehalfOfLabel: 'Your Greenhouse user ID (optional)',
+    onBehalfOfHint:
+      'Required for write actions (advance stage, reject, add note, apply tag). Find it in Greenhouse: People → click your name → the URL ends with /users/<id>.',
   },
   lever: { name: 'Lever', subtitle: 'OAuth', ready: false, authType: 'oauth' },
   workable: { name: 'Workable', subtitle: 'OAuth', ready: false, authType: 'oauth' },
@@ -68,8 +73,13 @@ export default function ConnectScreen() {
   const [busy, setBusy] = useState<ProviderId | null>(null);
   const [expanded, setExpanded] = useState<ProviderId | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
+  const [onBehalfOfInput, setOnBehalfOfInput] = useState('');
 
-  async function handleConnect(provider: ProviderId, apiKey: string) {
+  async function handleConnect(
+    provider: ProviderId,
+    apiKey: string,
+    onBehalfOf?: string,
+  ) {
     setBusy(provider);
     try {
       // Save the integration first so the proxy can find it when testConnection
@@ -79,6 +89,7 @@ export default function ConnectScreen() {
         provider,
         displayLabel: PROVIDER_META[provider]?.name ?? provider,
         credentials: apiKey,
+        onBehalfOfUserId: onBehalfOf,
       });
       try {
         const ok = await testConnection({ id: integrationId, provider });
@@ -98,6 +109,7 @@ export default function ConnectScreen() {
       setBusy(null);
       setExpanded(null);
       setApiKeyInput('');
+      setOnBehalfOfInput('');
     }
   }
 
@@ -111,10 +123,11 @@ export default function ConnectScreen() {
           Alert.alert('API key required', meta.apiKeyHint ?? 'Enter your API key.');
           return;
         }
-        void handleConnect(provider, trimmed);
+        void handleConnect(provider, trimmed, onBehalfOfInput.trim() || undefined);
       } else {
         setExpanded(provider);
         setApiKeyInput('');
+        setOnBehalfOfInput('');
       }
     } else {
       // mock — no creds needed; the proxy is bypassed and the in-app adapter
@@ -194,6 +207,29 @@ export default function ConnectScreen() {
                     <ThemedText type="small" themeColor="textSecondary">
                       {meta.apiKeyHint}
                     </ThemedText>
+                  ) : null}
+                  {meta.onBehalfOfLabel ? (
+                    <>
+                      <ThemedText type="smallBold" style={{ marginTop: Spacing.two }}>
+                        {meta.onBehalfOfLabel}
+                      </ThemedText>
+                      <TextInput
+                        value={onBehalfOfInput}
+                        onChangeText={setOnBehalfOfInput}
+                        placeholder="e.g. 4078347"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[styles.input, { color: theme.text }]}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="number-pad"
+                        editable={!isBusy}
+                      />
+                      {meta.onBehalfOfHint ? (
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {meta.onBehalfOfHint}
+                        </ThemedText>
+                      ) : null}
+                    </>
                   ) : null}
                 </View>
               ) : null}

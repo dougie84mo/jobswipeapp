@@ -106,23 +106,31 @@ export interface AtsCapabilities {
   canSendTemplate: boolean;
 }
 
+// requisitionExternalId is on every write input because some providers (e.g.
+// Greenhouse) can't disambiguate which application of a multi-job candidate
+// to act on without it. Providers that don't need it ignore the field.
+
 export interface AdvanceStageInput {
   candidateExternalId: string;
+  requisitionExternalId: string;
   stageId: string;
 }
 
 export interface RejectInput {
   candidateExternalId: string;
+  requisitionExternalId: string;
   reasonId?: string;
 }
 
 export interface AddTagInput {
   candidateExternalId: string;
+  requisitionExternalId: string;
   tagId: string;
 }
 
 export interface SendMessageInput {
   candidateExternalId: string;
+  requisitionExternalId: string;
   templateId?: string;
   body?: string;
   subject?: string;
@@ -130,6 +138,7 @@ export interface SendMessageInput {
 
 export interface AddNoteInput {
   candidateExternalId: string;
+  requisitionExternalId: string;
   text: string;
 }
 

@@ -10,10 +10,14 @@
 import { bootstrapAdapters } from './bootstrap';
 import { getAdapter } from './registry';
 import type {
+  AddNoteInput,
+  AddTagInput,
+  AdvanceStageInput,
   AtsCapabilities,
   Candidate,
   Page,
   ProviderId,
+  RejectInput,
   Requisition,
   Stage,
   StoredCredentials,
@@ -35,7 +39,7 @@ function usesProxy(provider: ProviderId): boolean {
 async function invokeProxy<T>(
   integration: IntegrationRef,
   method: string,
-  args?: Record<string, unknown>,
+  args?: object,
 ): Promise<T> {
   const { data, error } = await getSupabase().functions.invoke('ats-proxy', {
     body: {
@@ -110,4 +114,60 @@ export async function listTags(integration: IntegrationRef): Promise<Tag[]> {
 
 export function capabilitiesFor(provider: ProviderId): AtsCapabilities {
   return getAdapter(provider).capabilities();
+}
+
+// ============================================================================
+// Writes
+// ============================================================================
+
+export async function advanceCandidateStage(
+  integration: IntegrationRef,
+  input: AdvanceStageInput,
+): Promise<void> {
+  if (usesProxy(integration.provider)) {
+    await invokeProxy<unknown>(integration, 'advanceCandidateStage', input);
+    return;
+  }
+  const adapter = getAdapter(integration.provider);
+  if (!adapter.advanceCandidateStage) return;
+  await adapter.advanceCandidateStage(mockCreds(integration.provider), input);
+}
+
+export async function rejectCandidate(
+  integration: IntegrationRef,
+  input: RejectInput,
+): Promise<void> {
+  if (usesProxy(integration.provider)) {
+    await invokeProxy<unknown>(integration, 'rejectCandidate', input);
+    return;
+  }
+  const adapter = getAdapter(integration.provider);
+  if (!adapter.rejectCandidate) return;
+  await adapter.rejectCandidate(mockCreds(integration.provider), input);
+}
+
+export async function addCandidateTag(
+  integration: IntegrationRef,
+  input: AddTagInput,
+): Promise<void> {
+  if (usesProxy(integration.provider)) {
+    await invokeProxy<unknown>(integration, 'addCandidateTag', input);
+    return;
+  }
+  const adapter = getAdapter(integration.provider);
+  if (!adapter.addCandidateTag) return;
+  await adapter.addCandidateTag(mockCreds(integration.provider), input);
+}
+
+export async function addCandidateNote(
+  integration: IntegrationRef,
+  input: AddNoteInput,
+): Promise<void> {
+  if (usesProxy(integration.provider)) {
+    await invokeProxy<unknown>(integration, 'addCandidateNote', input);
+    return;
+  }
+  const adapter = getAdapter(integration.provider);
+  if (!adapter.addCandidateNote) return;
+  await adapter.addCandidateNote(mockCreds(integration.provider), input);
 }

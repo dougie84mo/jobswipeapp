@@ -1,8 +1,10 @@
 // Greenhouse Harvest API client (Deno).
 //
-// Read methods only for the first cut. Writes (move stage, reject, add note,
-// apply tag) all require Greenhouse's On-Behalf-Of header pointing at a
-// Greenhouse user id, which we don't capture yet — added in a follow-up.
+// Reads and writes. Writes need the recruiter's Greenhouse user id passed as
+// the On-Behalf-Of header — Greenhouse uses it to attribute the action and
+// permission-check. Captured at connect time and stored on
+// integrations.on_behalf_of_user_id; the ats-proxy reads it back before
+// dispatching a write.
 //
 // Docs: https://developers.greenhouse.io/harvest.html
 // Auth: Basic with `${apiKey}:` (note the trailing colon — Greenhouse uses
@@ -32,6 +34,58 @@ async function call<T>(apiKey: string, path: string): Promise<T> {
     );
   }
   return (await res.json()) as T;
+}
+
+async function write<T>(
+  apiKey: string,
+  onBehalfOf: string,
+  method: 'POST' | 'PUT' | 'PATCH',
+  path: string,
+  body: unknown,
+): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      Authorization: authHeader(apiKey),
+      'On-Behalf-Of': onBehalfOf,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const respBody = await res.text().catch(() => '');
+    throw new Error(
+      `Greenhouse ${res.status} ${res.statusText} for ${method} ${path}${respBody ? `: ${respBody}` : ''}`,
+    );
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+// Most Greenhouse writes target an application_id, but the app passes us
+// (candidate_id, job_id). Find the candidate's active application on the
+// given job. Returns the application id and its current stage id.
+async function findActiveApplication(
+  apiKey: string,
+  candidateId: string,
+  jobId: string,
+): Promise<{ applicationId: string; currentStageId: string | null }> {
+  const apps = await call<GhApplication[]>(
+    apiKey,
+    `/applications?candidate_id=${encodeURIComponent(candidateId)}&job_id=${encodeURIComponent(jobId)}&status=active&per_page=10`,
+  );
+  if (apps.length === 0) {
+    throw new Error(
+      `Greenhouse: no active application for candidate ${candidateId} on job ${jobId}`,
+    );
+  }
+  // Greenhouse returns at most one active app per (candidate, job) pair.
+  const app = apps[0]!;
+  return {
+    applicationId: String(app.id),
+    currentStageId: app.current_stage ? String(app.current_stage.id) : null,
+  };
 }
 
 // ============================================================================
@@ -193,4 +247,83 @@ export async function listStages(
 export async function listTags(apiKey: string): Promise<NormTag[]> {
   const tags = await call<GhTag[]>(apiKey, '/tags?per_page=200');
   return tags.map((t) => ({ id: String(t.id), name: t.name }));
+}
+
+// ============================================================================
+// Writes — all require On-Behalf-Of.
+// ============================================================================
+
+export async function advanceStage(
+  apiKey: string,
+  onBehalfOf: string,
+  candidateId: string,
+  jobId: string,
+  toStageId: string,
+): Promise<void> {
+  const { applicationId, currentStageId } = await findActiveApplication(
+    apiKey,
+    candidateId,
+    jobId,
+  );
+  if (!currentStageId) {
+    throw new Error(
+      `Greenhouse: application ${applicationId} has no current stage to move from`,
+    );
+  }
+  await write<unknown>(
+    apiKey,
+    onBehalfOf,
+    'POST',
+    `/applications/${applicationId}/move`,
+    { from_stage_id: Number(currentStageId), to_stage_id: Number(toStageId) },
+  );
+}
+
+export async function rejectApplication(
+  apiKey: string,
+  onBehalfOf: string,
+  candidateId: string,
+  jobId: string,
+  reasonId: string | undefined,
+): Promise<void> {
+  const { applicationId } = await findActiveApplication(apiKey, candidateId, jobId);
+  const body: Record<string, unknown> = {};
+  if (reasonId) body.rejection_reason_id = Number(reasonId);
+  await write<unknown>(
+    apiKey,
+    onBehalfOf,
+    'POST',
+    `/applications/${applicationId}/reject`,
+    body,
+  );
+}
+
+export async function addCandidateNote(
+  apiKey: string,
+  onBehalfOf: string,
+  candidateId: string,
+  noteBody: string,
+): Promise<void> {
+  await write<unknown>(
+    apiKey,
+    onBehalfOf,
+    'POST',
+    `/candidates/${candidateId}/notes`,
+    { body: noteBody, visibility: 'public' },
+  );
+}
+
+export async function applyCandidateTag(
+  apiKey: string,
+  onBehalfOf: string,
+  candidateId: string,
+  tagId: string,
+): Promise<void> {
+  await write<unknown>(
+    apiKey,
+    onBehalfOf,
+    'PUT',
+    `/candidates/${candidateId}/tags`,
+    { tag_id: Number(tagId) },
+  );
 }
