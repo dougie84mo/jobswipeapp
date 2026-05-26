@@ -1,6 +1,15 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -151,14 +160,27 @@ export default function ConnectScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ title: 'Connect ATS' }} />
-      <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
-        <ThemedText themeColor="textSecondary">
-          Pick the ATS you want to source from. Recruit Swipe will pull open
-          requisitions and candidates and write swipe outcomes back through
-          the same connection.
-        </ThemedText>
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={['bottom', 'left', 'right']}
+      >
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <ThemedText themeColor="textSecondary">
+              Pick the ATS you want to source from. Recruit Swipe will pull open
+              requisitions and candidates and write swipe outcomes back through
+              the same connection.
+            </ThemedText>
 
-        {entries.map(([provider, meta]) => {
+            {entries.map(([provider, meta]) => {
           const connectable = CONNECTABLE_PROVIDERS.includes(provider as ProviderId);
           const isExpanded = expanded === provider;
           const isBusy = busy === provider;
@@ -244,6 +266,8 @@ export default function ConnectScreen() {
             </ThemedView>
           );
         })}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -255,7 +279,13 @@ function toMessage(err: unknown): string {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { flex: 1, padding: Spacing.four, gap: Spacing.three },
+  flex: { flex: 1 },
+  safeArea: { flex: 1 },
+  scrollContent: {
+    padding: Spacing.four,
+    gap: Spacing.three,
+    paddingBottom: Spacing.six,
+  },
   card: {
     padding: Spacing.three,
     borderRadius: Spacing.three,
