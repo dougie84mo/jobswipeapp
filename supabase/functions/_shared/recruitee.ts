@@ -1,0 +1,378 @@
+// Recruitee JSON API client (Deno).
+//
+// Docs: https://docs.recruitee.com (reference), https://apidocs.recruitee.com
+// Auth: Bearer personal API token (Settings → Apps and plugins →
+// Personal API tokens).
+// Base URL: https://api.recruitee.com/c/{company_id} — company_id is the
+// numeric account id shown next to the token in the dashboard.
+//
+// Connect-time inputs (both required, recorded by the proxy):
+//   credentials → Vault (the token)
+//   integrations.extras.company_id (string)
+//
+// Rate limits: 5 req/min on trial, 100 req/min otherwise. 429 with
+// Retry-After honored by fetchWithBackoff.
+//
+// Capability set we ship:
+//   advance_stage / reject / apply_tag / add_note  ✓
+//   send_template / send_message                    ✗ (no equivalent
+//                                                      Recruitee endpoint
+//                                                      that fits the
+//                                                      action descriptor)
+
+const MAX_PAGES = 10;
+const PER_PAGE = 100;
+const MAX_RETRY_ATTEMPTS = 3;
+
+function baseUrl(companyId: string): string {
+  return `https://api.recruitee.com/c/${companyId}`;
+}
+
+function authHeader(token: string): string {
+  return `Bearer ${token}`;
+}
+
+async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
+    await res.body?.cancel();
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+  }
+  return fetch(url, init);
+}
+
+async function call<T>(
+  companyId: string,
+  token: string,
+  path: string,
+): Promise<T> {
+  const res = await fetchWithBackoff(`${baseUrl(companyId)}${path}`, {
+    method: 'GET',
+    headers: {
+      Authorization: authHeader(token),
+      Accept: 'application/json',
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(
+      `Recruitee ${res.status} ${res.statusText} for ${path}${body ? `: ${body}` : ''}`,
+    );
+  }
+  return (await res.json()) as T;
+}
+
+// Recruitee pagination: page-based via ?page=N&limit=100. Responses don't
+// always include a "next page" hint, so we walk until a short page or
+// MAX_PAGES.
+async function callPaged<T>(
+  companyId: string,
+  token: string,
+  basePath: string,
+  resultsKey: string,
+): Promise<T[]> {
+  const all: T[] = [];
+  const sep = basePath.includes('?') ? '&' : '?';
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await call<Record<string, unknown>>(
+      companyId,
+      token,
+      `${basePath}${sep}limit=${PER_PAGE}&page=${page}`,
+    );
+    const batch = (res[resultsKey] as T[]) ?? [];
+    all.push(...batch);
+    if (batch.length < PER_PAGE) break;
+  }
+  return all;
+}
+
+async function write<T>(
+  companyId: string,
+  token: string,
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  path: string,
+  body: unknown,
+): Promise<T> {
+  const res = await fetchWithBackoff(`${baseUrl(companyId)}${path}`, {
+    method,
+    headers: {
+      Authorization: authHeader(token),
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const respBody = await res.text().catch(() => '');
+    throw new Error(
+      `Recruitee ${res.status} ${res.statusText} for ${method} ${path}${respBody ? `: ${respBody}` : ''}`,
+    );
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+// ============================================================================
+// Normalized shapes — match src/ats/types.ts.
+// ============================================================================
+
+export interface NormRequisition {
+  externalId: string;
+  title: string;
+  department?: string;
+  location?: string;
+  raw: unknown;
+}
+export interface NormCandidate {
+  externalId: string;
+  requisitionExternalId: string;
+  fullName: string;
+  headline?: string;
+  location?: string;
+  resumeUrl?: string;
+  photoUrl?: string;
+  skills?: string[];
+  yearsExperience?: number;
+  raw: unknown;
+}
+export interface NormStage {
+  id: string;
+  name: string;
+  order?: number;
+}
+export interface NormTag {
+  id: string;
+  name: string;
+}
+export interface NormPage<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+// ============================================================================
+// Recruitee response shapes — only the fields we read.
+// ============================================================================
+
+interface RecruiteeOffer {
+  id: number;
+  title: string;
+  slug: string;
+  status: string;
+  department?: { name: string };
+  location?: { city?: string; country_code?: string };
+}
+interface RecruiteeCandidate {
+  id: number;
+  name: string;
+  emails?: string[];
+  positive_ratings?: number;
+  source?: string;
+  photo_thumb_url?: string;
+  cv_url?: string;
+  fields?: { kind: string; values?: { text?: string }[] }[];
+  placements?: { offer_id: number; stage_id?: number; status?: string }[];
+  tags?: string[];
+}
+interface RecruiteeStage {
+  id: number;
+  name: string;
+  category?: string;
+  position?: number;
+}
+interface RecruiteeTag {
+  id: number;
+  name: string;
+}
+
+// ============================================================================
+// Public methods.
+// ============================================================================
+
+export async function testConnection(companyId: string, token: string): Promise<boolean> {
+  // /current_user is the lightest authenticated read and confirms the token
+  // belongs to a user in the given company.
+  await call<unknown>(companyId, token, '/current_user');
+  return true;
+}
+
+export async function listRequisitions(
+  companyId: string,
+  token: string,
+): Promise<NormPage<NormRequisition>> {
+  // status=published surfaces active job postings. Other Recruitee statuses
+  // (draft, closed, archived, internal) aren't surfaced.
+  const offers = await callPaged<RecruiteeOffer>(
+    companyId,
+    token,
+    '/offers?status=published',
+    'offers',
+  );
+  return {
+    items: offers.map((o) => ({
+      externalId: String(o.id),
+      title: o.title,
+      department: o.department?.name,
+      location: [o.location?.city, o.location?.country_code]
+        .filter(Boolean)
+        .join(', '),
+      raw: o,
+    })),
+    nextCursor: null,
+  };
+}
+
+export async function listCandidatesForRequisition(
+  companyId: string,
+  token: string,
+  offerExternalId: string,
+): Promise<NormPage<NormCandidate>> {
+  // /offers/:id/candidates returns candidates already filtered to that
+  // offer's placements. No follow-up GETs needed.
+  const candidates = await callPaged<RecruiteeCandidate>(
+    companyId,
+    token,
+    `/offers/${encodeURIComponent(offerExternalId)}/candidates`,
+    'candidates',
+  );
+  return {
+    items: candidates.map((c) => ({
+      externalId: String(c.id),
+      requisitionExternalId: offerExternalId,
+      fullName: c.name ?? `Candidate ${c.id}`,
+      headline: c.fields?.find((f) => f.kind === 'position')?.values?.[0]?.text,
+      location: c.fields?.find((f) => f.kind === 'location')?.values?.[0]?.text,
+      resumeUrl: c.cv_url,
+      photoUrl: c.photo_thumb_url,
+      skills: c.tags,
+      raw: c,
+    })),
+    nextCursor: null,
+  };
+}
+
+export async function listStages(
+  companyId: string,
+  token: string,
+  _offerExternalId: string,
+): Promise<NormStage[]> {
+  // Recruitee stages live on a pipeline template. Pipeline stages are
+  // global to the company in practice — listStages ignores the
+  // requisitionExternalId arg, same posture as Lever / Workable.
+  const res = await call<{ stages: RecruiteeStage[] }>(
+    companyId,
+    token,
+    '/pipeline_templates/default_stages',
+  );
+  return (res.stages ?? []).map((s) => ({
+    id: String(s.id),
+    name: s.name,
+    order: s.position,
+  }));
+}
+
+export async function listTags(
+  companyId: string,
+  token: string,
+): Promise<NormTag[]> {
+  const res = await call<{ tags: RecruiteeTag[] }>(companyId, token, '/tags');
+  return (res.tags ?? []).map((t) => ({ id: String(t.id), name: t.name }));
+}
+
+// ============================================================================
+// Writes.
+// ============================================================================
+
+export async function moveStage(
+  companyId: string,
+  token: string,
+  candidateId: string,
+  toStageId: string,
+  offerExternalId: string,
+): Promise<void> {
+  // Stage move targets a candidate's placement on a specific offer. Find
+  // the placement id from the candidate's placements array — Recruitee
+  // returns one placement per offer.
+  const res = await call<{ candidate: RecruiteeCandidate }>(
+    companyId,
+    token,
+    `/candidates/${candidateId}`,
+  );
+  const placement = res.candidate.placements?.find(
+    (p) => String(p.offer_id) === offerExternalId,
+  );
+  if (!placement) {
+    throw new Error(
+      `Recruitee: candidate ${candidateId} has no placement on offer ${offerExternalId}`,
+    );
+  }
+  await write<unknown>(
+    companyId,
+    token,
+    'PATCH',
+    `/candidates/${candidateId}/placements/${(placement as { id?: number }).id}`,
+    { stage_id: Number(toStageId) },
+  );
+}
+
+export async function disqualifyCandidate(
+  companyId: string,
+  token: string,
+  candidateId: string,
+  offerExternalId: string,
+  reasonId: string | undefined,
+): Promise<void> {
+  const res = await call<{ candidate: RecruiteeCandidate }>(
+    companyId,
+    token,
+    `/candidates/${candidateId}`,
+  );
+  const placement = res.candidate.placements?.find(
+    (p) => String(p.offer_id) === offerExternalId,
+  );
+  if (!placement) {
+    throw new Error(
+      `Recruitee: candidate ${candidateId} has no placement on offer ${offerExternalId}`,
+    );
+  }
+  const body: Record<string, unknown> = { status: 'disqualified' };
+  if (reasonId) body.disqualify_reason_id = Number(reasonId);
+  await write<unknown>(
+    companyId,
+    token,
+    'PATCH',
+    `/candidates/${candidateId}/placements/${(placement as { id?: number }).id}`,
+    body,
+  );
+}
+
+export async function addCandidateNote(
+  companyId: string,
+  token: string,
+  candidateId: string,
+  noteBody: string,
+): Promise<void> {
+  await write<unknown>(
+    companyId,
+    token,
+    'POST',
+    `/candidates/${candidateId}/notes`,
+    { note: { body: noteBody } },
+  );
+}
+
+export async function addCandidateTag(
+  companyId: string,
+  token: string,
+  candidateId: string,
+  tagId: string,
+): Promise<void> {
+  await write<unknown>(
+    companyId,
+    token,
+    'POST',
+    `/candidates/${candidateId}/tags`,
+    { tag: { id: Number(tagId) } },
+  );
+}

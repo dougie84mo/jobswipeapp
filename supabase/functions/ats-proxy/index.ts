@@ -65,6 +65,17 @@ import {
   setCandidateTags as workableSetTags,
   testConnection as workableTestConnection,
 } from '../_shared/workable.ts';
+import {
+  addCandidateNote as recruiteeAddNote,
+  addCandidateTag as recruiteeAddTag,
+  disqualifyCandidate as recruiteeDisqualify,
+  listCandidatesForRequisition as recruiteeListCandidates,
+  listRequisitions as recruiteeListRequisitions,
+  listStages as recruiteeListStages,
+  listTags as recruiteeListTags,
+  moveStage as recruiteeMoveStage,
+  testConnection as recruiteeTestConnection,
+} from '../_shared/recruitee.ts';
 
 type Method =
   | 'testConnection'
@@ -399,6 +410,65 @@ async function dispatch(
       case 'addCandidateNote':
         return workableAddComment(
           subdomain,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'text'),
+        );
+    }
+  }
+  if (provider === 'recruitee') {
+    const companyId =
+      typeof extras.company_id === 'string' ? extras.company_id : '';
+    if (!companyId) {
+      throw new Error(
+        'Recruitee integration is missing extras.company_id. Reconnect and supply your company id.',
+      );
+    }
+    switch (method) {
+      case 'testConnection':
+        return recruiteeTestConnection(companyId, apiKey);
+      case 'listRequisitions':
+        return recruiteeListRequisitions(companyId, apiKey);
+      case 'listCandidatesForRequisition':
+        return recruiteeListCandidates(
+          companyId,
+          apiKey,
+          str(args, 'requisitionExternalId'),
+        );
+      case 'listStages':
+        return recruiteeListStages(
+          companyId,
+          apiKey,
+          str(args, 'requisitionExternalId'),
+        );
+      case 'listTags':
+        return recruiteeListTags(companyId, apiKey);
+      case 'advanceCandidateStage':
+        return recruiteeMoveStage(
+          companyId,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'stageId'),
+          str(args, 'requisitionExternalId'),
+        );
+      case 'rejectCandidate':
+        return recruiteeDisqualify(
+          companyId,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'requisitionExternalId'),
+          strOpt(args, 'reasonId'),
+        );
+      case 'addCandidateTag':
+        return recruiteeAddTag(
+          companyId,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'tagId'),
+        );
+      case 'addCandidateNote':
+        return recruiteeAddNote(
+          companyId,
           apiKey,
           str(args, 'candidateExternalId'),
           str(args, 'text'),

@@ -32,6 +32,7 @@ const CONNECTABLE_PROVIDERS: ProviderId[] = [
   'ashby',
   'lever',
   'workable',
+  'recruitee',
 ];
 
 interface ProviderMeta {
@@ -45,10 +46,13 @@ interface ProviderMeta {
   // header. Captured as integrations.on_behalf_of_user_id.
   onBehalfOfLabel?: string;
   onBehalfOfHint?: string;
-  // Workable / Recruitee / future subdomain-scoped providers. Captured as
-  // integrations.extras.subdomain.
-  subdomainLabel?: string;
-  subdomainHint?: string;
+  // Tenant identifier field for providers whose API URL embeds it
+  // (Workable: subdomain, Recruitee: company_id, future job boards:
+  // org id). extrasKey is what we store it under in integrations.extras
+  // so the Deno client can read it back unambiguously.
+  extrasKey?: string;
+  tenantLabel?: string;
+  tenantHint?: string;
 }
 
 const PROVIDER_META: Record<string, ProviderMeta> = {
@@ -87,8 +91,9 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
     apiKeyLabel: 'Workable access token',
     apiKeyHint:
       'Settings → Integrations → API Access Tokens → New token. Grant read scopes (r_jobs, r_candidates, r_stages) and write scopes (w_candidates, w_comments) for swipe actions to fire.',
-    subdomainLabel: 'Workable account subdomain',
-    subdomainHint:
+    extrasKey: 'subdomain',
+    tenantLabel: 'Workable account subdomain',
+    tenantHint:
       'Your Workable URL is https://<subdomain>.workable.com — enter just the subdomain (e.g. "acme"). The API lives at https://<subdomain>.workable.com/spi/v3.',
   },
   ashby: {
@@ -109,7 +114,19 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   workday: { name: 'Workday Recruiting', subtitle: 'OAuth', ready: false, authType: 'oauth' },
   bamboohr: { name: 'BambooHR ATS', subtitle: 'API key', ready: false, authType: 'api_key' },
   jazzhr: { name: 'JazzHR', subtitle: 'API key', ready: false, authType: 'api_key' },
-  recruitee: { name: 'Recruitee', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  recruitee: {
+    name: 'Recruitee',
+    subtitle: 'Recruitee JSON API • Bearer token + company ID',
+    ready: true,
+    authType: 'api_key',
+    apiKeyLabel: 'Recruitee personal API token',
+    apiKeyHint:
+      'Settings → Apps and plugins → Personal API tokens → New token. The token inherits your user permissions, so the same scopes you have in the UI apply to swipe actions.',
+    extrasKey: 'company_id',
+    tenantLabel: 'Recruitee company ID',
+    tenantHint:
+      'Found at Settings → Apps and plugins → Personal API tokens — the numeric id shown alongside the token. The API path is https://api.recruitee.com/c/<company_id>.',
+  },
   teamtailor: { name: 'Teamtailor', subtitle: 'API key', ready: false, authType: 'api_key' },
   icims: { name: 'iCIMS', subtitle: 'OAuth', ready: false, authType: 'oauth' },
   manatal: { name: 'Manatal', subtitle: 'API key', ready: false, authType: 'api_key' },
@@ -128,16 +145,18 @@ export default function ConnectScreen() {
   const [expanded, setExpanded] = useState<ProviderId | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [onBehalfOfInput, setOnBehalfOfInput] = useState('');
-  const [subdomainInput, setSubdomainInput] = useState('');
+  const [tenantInput, setTenantInput] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
 
   async function handleConnect(
     provider: ProviderId,
     apiKey: string,
     onBehalfOf?: string,
-    subdomain?: string,
+    tenant?: string,
   ) {
     setBusy(provider);
+    const extrasKey = PROVIDER_META[provider]?.extrasKey;
+    const extras = tenant && extrasKey ? { [extrasKey]: tenant } : undefined;
     try {
       // Save the integration first so the proxy can find it when testConnection
       // looks it up by integrationId. We persist immediately and roll back
@@ -147,7 +166,7 @@ export default function ConnectScreen() {
         displayLabel: PROVIDER_META[provider]?.name ?? provider,
         credentials: apiKey,
         onBehalfOfUserId: onBehalfOf,
-        extras: subdomain ? { subdomain } : undefined,
+        extras,
       });
       try {
         const ok = await testConnection({ id: integrationId, provider });
@@ -168,7 +187,7 @@ export default function ConnectScreen() {
       setExpanded(null);
       setApiKeyInput('');
       setOnBehalfOfInput('');
-      setSubdomainInput('');
+      setTenantInput('');
       setShowApiKey(false);
     }
   }
@@ -183,11 +202,11 @@ export default function ConnectScreen() {
           Alert.alert('API key required', meta.apiKeyHint ?? 'Enter your API key.');
           return;
         }
-        const subdomain = subdomainInput.trim();
-        if (meta.subdomainLabel && !subdomain) {
+        const tenant = tenantInput.trim();
+        if (meta.tenantLabel && !tenant) {
           Alert.alert(
-            'Subdomain required',
-            meta.subdomainHint ?? 'Enter the account subdomain.',
+            `${meta.tenantLabel} required`,
+            meta.tenantHint ?? 'Enter the account identifier.',
           );
           return;
         }
@@ -195,13 +214,13 @@ export default function ConnectScreen() {
           provider,
           trimmed,
           onBehalfOfInput.trim() || undefined,
-          subdomain || undefined,
+          tenant || undefined,
         );
       } else {
         setExpanded(provider);
         setApiKeyInput('');
         setOnBehalfOfInput('');
-        setSubdomainInput('');
+        setTenantInput('');
         setShowApiKey(false);
       }
     } else {
@@ -345,24 +364,26 @@ export default function ConnectScreen() {
                       ) : null}
                     </>
                   ) : null}
-                  {meta.subdomainLabel ? (
+                  {meta.tenantLabel ? (
                     <>
                       <ThemedText type="smallBold" style={{ marginTop: Spacing.two }}>
-                        {meta.subdomainLabel}
+                        {meta.tenantLabel}
                       </ThemedText>
                       <TextInput
-                        value={subdomainInput}
-                        onChangeText={setSubdomainInput}
-                        placeholder="e.g. acme"
+                        value={tenantInput}
+                        onChangeText={setTenantInput}
+                        placeholder={
+                          meta.extrasKey === 'company_id' ? 'e.g. 12345' : 'e.g. acme'
+                        }
                         placeholderTextColor={theme.textSecondary}
                         style={[styles.input, { color: theme.text }]}
                         autoCapitalize="none"
                         autoCorrect={false}
                         editable={!isBusy}
                       />
-                      {meta.subdomainHint ? (
+                      {meta.tenantHint ? (
                         <ThemedText type="small" themeColor="textSecondary">
-                          {meta.subdomainHint}
+                          {meta.tenantHint}
                         </ThemedText>
                       ) : null}
                     </>
