@@ -1,14 +1,19 @@
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useActivity, type ActivityRow } from '@/features/swipes/activity';
-import type { ExecutedAction, SwipeDirection } from '@/ats/types';
+import { useIntegration } from '@/features/integrations/queries';
+import {
+  useActivity,
+  useRetryAction,
+  type ActivityRow,
+} from '@/features/swipes/activity';
+import type { ExecutedAction, ProviderId, SwipeDirection } from '@/ats/types';
 
 const DIRECTION_LABEL: Record<SwipeDirection, string> = {
   right: 'Saved',
@@ -36,7 +41,9 @@ const STATUS_COLOR: Record<ExecutedAction['status'], string> = {
 
 export default function ActivityScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const integrationQuery = useIntegration(id);
   const activityQuery = useActivity(id);
+  const provider = integrationQuery.data?.provider as ProviderId | undefined;
 
   return (
     <ThemedView style={styles.container}>
@@ -69,7 +76,13 @@ export default function ActivityScreen() {
             keyExtractor={(item) => item.swipe_id}
             contentContainerStyle={styles.listContent}
             ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
-            renderItem={({ item }) => <ActivityCard item={item} />}
+            renderItem={({ item }) => (
+              <ActivityCard
+                item={item}
+                integrationId={id}
+                provider={provider}
+              />
+            )}
           />
         )}
       </SafeAreaView>
@@ -77,10 +90,43 @@ export default function ActivityScreen() {
   );
 }
 
-function ActivityCard({ item }: { item: ActivityRow }) {
+function ActivityCard({
+  item,
+  integrationId,
+  provider,
+}: {
+  item: ActivityRow;
+  integrationId: string;
+  provider: ProviderId | undefined;
+}) {
   const [open, setOpen] = useState(false);
+  const [retryingIndex, setRetryingIndex] = useState<number | null>(null);
+  const retry = useRetryAction();
   const date = new Date(item.created_at);
   const summary = summarizeActions(item.executed_actions);
+
+  async function handleRetry(index: number) {
+    if (!provider) {
+      Alert.alert('Retry failed', 'Integration not loaded yet.');
+      return;
+    }
+    setRetryingIndex(index);
+    try {
+      await retry.mutateAsync({
+        integrationId,
+        provider,
+        row: item,
+        actionIndex: index,
+      });
+    } catch (err) {
+      Alert.alert(
+        'Retry failed',
+        err instanceof Error ? err.message : 'Unknown error',
+      );
+    } finally {
+      setRetryingIndex(null);
+    }
+  }
 
   return (
     <Pressable
@@ -134,22 +180,37 @@ function ActivityCard({ item }: { item: ActivityRow }) {
                 >
                   {STATUS_LABEL[a.status]}
                 </ThemedText>
-                <ThemedText type="small" style={{ flex: 1 }}>
-                  {describeAction(a)}
-                </ThemedText>
+                <View style={{ flex: 1, gap: Spacing.half }}>
+                  <ThemedText type="small">{describeAction(a)}</ThemedText>
+                  {a.message ? (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {a.message}
+                    </ThemedText>
+                  ) : null}
+                </View>
+                {a.status === 'failure' ? (
+                  <Pressable
+                    onPress={(e) => {
+                      // Card root is also pressable (toggles open/closed);
+                      // stop the tap from collapsing the detail panel.
+                      e.stopPropagation();
+                      void handleRetry(i);
+                    }}
+                    disabled={retryingIndex !== null}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.retryButton,
+                      pressed && styles.pressed,
+                      retryingIndex !== null && styles.disabled,
+                    ]}
+                  >
+                    <ThemedText style={styles.retryButtonText}>
+                      {retryingIndex === i ? 'Retrying…' : 'Retry'}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
               </View>
             ))}
-            {item.executed_actions.some((a) => a.message) ? (
-              <View style={{ gap: Spacing.half, marginTop: Spacing.two }}>
-                {item.executed_actions
-                  .filter((a) => a.message)
-                  .map((a, i) => (
-                    <ThemedText key={i} type="small" themeColor="textSecondary">
-                      {STATUS_LABEL[a.status]}: {a.message}
-                    </ThemedText>
-                  ))}
-              </View>
-            ) : null}
           </View>
         ) : null}
       </ThemedView>
@@ -240,5 +301,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: Spacing.two,
   },
+  retryButton: {
+    backgroundColor: '#208AEF',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: 999,
+  },
+  retryButtonText: { color: 'white', fontWeight: '700', fontSize: 12 },
   pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.5 },
 });
