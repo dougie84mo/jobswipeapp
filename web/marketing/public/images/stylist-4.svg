@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Portrait placeholder for stylist testimonial: warm-tone illustration of a professional with medium skin tone and an undercut side-swept hairstyle.">
+  <!-- PLACEHOLDER: stylist-4.svg — swap with real head-and-shoulders portrait (1:1, ~800px). -->
+  <defs>
+    <radialGradient id="bg4" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#ead0a8"/>
+      <stop offset="1" stop-color="#8a5a36"/>
+    </radialGradient>
+    <linearGradient id="skin4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#caa078"/>
+      <stop offset="1" stop-color="#8e6a47"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg4)"/>
+  <!-- Shoulders, denim/chambray -->
+  <path d="M30 600 Q300 370 570 600 Z" fill="#2a3a52"/>
+  <ellipse cx="300" cy="435" rx="230" ry="52" fill="#3a4a64"/>
+  <!-- Open collar -->
+  <path d="M260 430 L300 470 L340 430 Z" fill="#caa078" opacity="0.7"/>
+  <!-- Neck -->
+  <rect x="268" y="350" width="66" height="80" rx="20" fill="url(#skin4)"/>
+  <!-- Head -->
+  <ellipse cx="300" cy="265" rx="116" ry="142" fill="url(#skin4)"/>
+  <!-- Side-swept top, shaved sides -->
+  <path d="M190 240 Q195 100 320 95 Q420 105 415 200
+           Q360 130 290 145 Q220 165 200 240 Z" fill="#1a0a06"/>
+  <!-- Shaved side stubble shading -->
+  <ellipse cx="200" cy="280" rx="22" ry="55" fill="#3a1f12" opacity="0.5"/>
+  <ellipse cx="412" cy="270" rx="14" ry="40" fill="#3a1f12" opacity="0.5"/>
+  <!-- Face hints -->
+  <ellipse cx="265" cy="270" rx="6" ry="4" fill="#1a0e08"/>
+  <ellipse cx="335" cy="270" rx="6" ry="4" fill="#1a0e08"/>
+  <rect x="255" y="248" width="22" height="4" rx="2" fill="#1a0e08"/>
+  <rect x="323" y="248" width="22" height="4" rx="2" fill="#1a0e08"/>
+  <path d="M278 328 Q300 338 322 328" stroke="#8a3a2a" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Tiny nose stud -->
+  <circle cx="285" cy="298" r="2.5" fill="#d4af6b"/>
+  <!-- Subtle catchlight -->
+  <ellipse cx="248" cy="218" rx="18" ry="9" fill="#fff4dd" opacity="0.22"/>
+</svg>

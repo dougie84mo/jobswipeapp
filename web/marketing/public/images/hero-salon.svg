@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Warm-lit salon interior: stylist working with a client at a chair, illuminated mirror on the wall.">
+  <!--
+    PLACEHOLDER: hero-salon.svg
+    Swap with: warm, cinematic salon lifestyle shot (stylist + client at chair, mirror in frame).
+    Target aspect: 16:9, ~2400px wide for retina.
+    Recommended Unsplash search: "salon interior warm lighting", "hairdresser working".
+  -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2a22"/>
+      <stop offset="1" stop-color="#1a1311"/>
+    </linearGradient>
+    <radialGradient id="window" cx="0.85" cy="0.25" r="0.55">
+      <stop offset="0" stop-color="#ffd9a8" stop-opacity="0.95"/>
+      <stop offset="0.45" stop-color="#f0a86b" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#f0a86b" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mirrorGlow" cx="0.5" cy="0.5" r="0.55">
+      <stop offset="0" stop-color="#fff4dd" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#fff4dd" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1d18"/>
+      <stop offset="1" stop-color="#120c0a"/>
+    </linearGradient>
+    <linearGradient id="mirrorGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4dfbe"/>
+      <stop offset="1" stop-color="#7a6048"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000" stop-opacity="0.55"/>
+      <stop offset="0.4" stop-color="#000" stop-opacity="0"/>
+      <stop offset="0.7" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Back wall + ambient warm glow -->
+  <rect width="1600" height="700" fill="url(#sky)"/>
+  <rect width="1600" height="900" fill="url(#window)"/>
+
+  <!-- Floor -->
+  <rect y="700" width="1600" height="200" fill="url(#floor)"/>
+  <line x1="0" y1="700" x2="1600" y2="700" stroke="#5a3f31" stroke-width="2" opacity="0.55"/>
+
+  <!-- Pendant lights -->
+  <g opacity="0.9">
+    <line x1="280" y1="0" x2="280" y2="120" stroke="#7a5a44" stroke-width="2"/>
+    <circle cx="280" cy="135" r="18" fill="#ffd791"/>
+    <circle cx="280" cy="135" r="32" fill="#ffd791" opacity="0.18"/>
+    <line x1="520" y1="0" x2="520" y2="90" stroke="#7a5a44" stroke-width="2"/>
+    <circle cx="520" cy="105" r="14" fill="#ffd791"/>
+    <circle cx="520" cy="105" r="26" fill="#ffd791" opacity="0.18"/>
+  </g>
+
+  <!-- Wall mirror (rectangular, thin bezel) -->
+  <g transform="translate(900, 130)">
+    <rect width="430" height="540" rx="8" fill="#0d0805" stroke="#caa170" stroke-width="3"/>
+    <rect x="6" y="6" width="418" height="528" rx="4" fill="url(#mirrorGlass)"/>
+    <ellipse cx="215" cy="270" rx="220" ry="280" fill="url(#mirrorGlow)"/>
+    <!-- Reflected silhouette of client in chair -->
+    <g opacity="0.65" transform="translate(80, 200)">
+      <circle cx="135" cy="40" r="40" fill="#3a2418"/>
+      <path d="M70 100 Q135 70 200 100 L210 260 L60 260 Z" fill="#2a1812"/>
+    </g>
+  </g>
+
+  <!-- Counter under mirror -->
+  <rect x="860" y="670" width="510" height="40" fill="#2a1d16"/>
+  <rect x="860" y="670" width="510" height="3" fill="#caa170" opacity="0.6"/>
+  <!-- Bottles on counter -->
+  <g opacity="0.85">
+    <rect x="900" y="640" width="14" height="30" rx="2" fill="#caa170"/>
+    <rect x="930" y="635" width="12" height="35" rx="2" fill="#9c7148"/>
+    <rect x="960" y="645" width="16" height="25" rx="2" fill="#e6c79a"/>
+    <rect x="1250" y="638" width="14" height="32" rx="2" fill="#caa170"/>
+    <rect x="1280" y="642" width="12" height="28" rx="2" fill="#9c7148"/>
+  </g>
+
+  <!-- Salon chair (silhouette) -->
+  <g transform="translate(420, 360)">
+    <!-- Base column -->
+    <rect x="135" y="260" width="40" height="55" fill="#0a0606"/>
+    <ellipse cx="155" cy="320" rx="90" ry="14" fill="#0a0606"/>
+    <!-- Seat -->
+    <rect x="50" y="220" width="210" height="50" rx="10" fill="#141010"/>
+    <!-- Back -->
+    <path d="M55 220 Q60 60 155 50 Q250 60 255 220 Z" fill="#1a1414"/>
+    <!-- Arm -->
+    <rect x="45" y="190" width="20" height="50" rx="6" fill="#1a1414"/>
+    <rect x="245" y="190" width="20" height="50" rx="6" fill="#1a1414"/>
+  </g>
+
+  <!-- Client seated -->
+  <g transform="translate(520, 360)">
+    <!-- Cape -->
+    <path d="M-30 130 Q60 90 160 130 L185 280 L-55 280 Z" fill="#0e0a08"/>
+    <!-- Shoulders / chest -->
+    <ellipse cx="65" cy="130" rx="80" ry="22" fill="#1a120e"/>
+    <!-- Head -->
+    <ellipse cx="65" cy="65" rx="48" ry="58" fill="#d8a679"/>
+    <!-- Hair -->
+    <path d="M18 50 Q22 0 65 0 Q108 0 112 50 Q105 30 65 28 Q25 30 18 50 Z" fill="#2b1a10"/>
+    <path d="M18 50 Q22 80 28 95 L20 100 Q14 80 18 50 Z" fill="#2b1a10"/>
+  </g>
+
+  <!-- Stylist (behind chair) -->
+  <g transform="translate(605, 290)">
+    <!-- Apron / body -->
+    <path d="M-30 110 Q35 85 100 110 L120 320 L-50 320 Z" fill="#171110"/>
+    <!-- Shoulders -->
+    <ellipse cx="35" cy="110" rx="70" ry="18" fill="#1f1715"/>
+    <!-- Head -->
+    <ellipse cx="35" cy="60" rx="42" ry="50" fill="#caa07d"/>
+    <!-- Hair tied back -->
+    <path d="M-2 45 Q-5 5 35 5 Q75 5 78 45 Q70 28 35 26 Q0 28 -2 45 Z" fill="#1a0e08"/>
+    <ellipse cx="36" cy="44" rx="30" ry="6" fill="#1a0e08"/>
+    <!-- Arm reaching toward client's head -->
+    <path d="M-25 130 Q-60 170 -30 210 Q-10 215 -5 200 Q-15 175 -2 145 Z" fill="#1f1715"/>
+    <!-- Hand -->
+    <ellipse cx="-10" cy="205" rx="13" ry="10" fill="#caa07d" transform="rotate(-25 -10 205)"/>
+    <!-- Scissors hint -->
+    <line x1="-20" y1="200" x2="5" y2="218" stroke="#d6d6d6" stroke-width="2"/>
+    <circle cx="-22" cy="199" r="4" fill="none" stroke="#d6d6d6" stroke-width="2"/>
+    <circle cx="-26" cy="206" r="4" fill="none" stroke="#d6d6d6" stroke-width="2"/>
+  </g>
+
+  <!-- Soft warm rim light around stylist/client -->
+  <ellipse cx="600" cy="430" rx="280" ry="240" fill="url(#mirrorGlow)" opacity="0.22"/>
+
+  <!-- Foreground vignette -->
+  <rect width="1600" height="900" fill="url(#vignette)"/>
+
+  <!-- Subtle PLACEHOLDER mark (bottom-right, low contrast) -->
+  <g opacity="0.18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" fill="#fff4dd">
+    <text x="1568" y="870" text-anchor="end" font-size="14" letter-spacing="2">PLACEHOLDER · HERO-SALON</text>
+  </g>
+</svg>

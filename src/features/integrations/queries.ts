@@ -59,6 +59,7 @@ export interface CreateIntegrationInput {
   displayLabel: string;
   credentials: string;
   onBehalfOfUserId?: string;
+  extras?: Record<string, unknown>;
 }
 
 export function useCreateIntegration() {
@@ -70,6 +71,7 @@ export function useCreateIntegration() {
         p_display_label: input.displayLabel,
         p_credentials: input.credentials,
         p_on_behalf_of_user_id: input.onBehalfOfUserId ?? null,
+        p_extras: input.extras ?? {},
       });
       if (error) throw error;
       return data as string;

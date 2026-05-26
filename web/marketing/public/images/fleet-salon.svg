@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Wide salon interior: a row of styling stations with mirrors lining a long warm-lit wall.">
+  <!--
+    PLACEHOLDER: fleet-salon.svg
+    Swap with: wide-angle salon interior with a row of chairs / stations / mirrors.
+    Target aspect: 2:1 wide, ~2400px wide.
+  -->
+  <defs>
+    <linearGradient id="wallF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7ecdc"/>
+      <stop offset="1" stop-color="#ddc5a3"/>
+    </linearGradient>
+    <radialGradient id="warmF" cx="0.5" cy="0.2" r="0.85">
+      <stop offset="0" stop-color="#fff1d2" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#fff1d2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="floorF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a78a64"/>
+      <stop offset="1" stop-color="#5a4530"/>
+    </linearGradient>
+    <linearGradient id="bezelF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1410"/>
+      <stop offset="1" stop-color="#0a0706"/>
+    </linearGradient>
+    <linearGradient id="glassF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cbb494"/>
+      <stop offset="1" stop-color="#3f3024"/>
+    </linearGradient>
+    <linearGradient id="vignetteF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Wall + warm wash -->
+  <rect width="1800" height="650" fill="url(#wallF)"/>
+  <rect width="1800" height="900" fill="url(#warmF)"/>
+
+  <!-- Floor with perspective lines -->
+  <rect y="650" width="1800" height="250" fill="url(#floorF)"/>
+  <g opacity="0.18" stroke="#3a2a18" stroke-width="1">
+    <line x1="-200" y1="900" x2="900" y2="650"/>
+    <line x1="2000" y1="900" x2="900" y2="650"/>
+    <line x1="200" y1="900" x2="900" y2="650"/>
+    <line x1="1600" y1="900" x2="900" y2="650"/>
+  </g>
+
+  <!-- Repeat: mirror + chair stations -->
+  <g id="station">
+    <!-- Mirror -->
+    <rect x="0" y="0" width="220" height="430" rx="8" fill="url(#bezelF)"/>
+    <rect x="8" y="8" width="204" height="414" rx="4" fill="url(#glassF)"/>
+    <!-- Reflected hint -->
+    <ellipse cx="110" cy="260" rx="60" ry="80" fill="#1a1410" opacity="0.45"/>
+    <!-- Counter -->
+    <rect x="-30" y="430" width="280" height="22" fill="#3a2a1a"/>
+    <rect x="-30" y="430" width="280" height="3" fill="#caa170" opacity="0.7"/>
+    <!-- Chair silhouette -->
+    <g transform="translate(40, 470)">
+      <path d="M0 100 Q5 0 70 -5 Q135 0 140 100 Z" fill="#1a1410"/>
+      <rect x="-10" y="100" width="160" height="40" rx="8" fill="#0d0807"/>
+      <rect x="60" y="140" width="30" height="35" fill="#0a0606"/>
+      <ellipse cx="75" cy="180" rx="60" ry="10" fill="#0a0606"/>
+    </g>
+  </g>
+
+  <!-- Five stations across, slight diminishing perspective -->
+  <use href="#station" transform="translate(80, 130)"/>
+  <use href="#station" transform="translate(420, 130)"/>
+  <use href="#station" transform="translate(760, 130)"/>
+  <use href="#station" transform="translate(1100, 130)"/>
+  <use href="#station" transform="translate(1440, 130)"/>
+
+  <!-- Hanging pendant lights between stations -->
+  <g opacity="0.85">
+    <g transform="translate(300, 0)">
+      <line x1="0" y1="0" x2="0" y2="60" stroke="#7a5a44" stroke-width="2"/>
+      <circle cy="75" r="14" fill="#ffd791"/>
+      <circle cy="75" r="28" fill="#ffd791" opacity="0.18"/>
+    </g>
+    <g transform="translate(640, 0)">
+      <line x1="0" y1="0" x2="0" y2="60" stroke="#7a5a44" stroke-width="2"/>
+      <circle cy="75" r="14" fill="#ffd791"/>
+      <circle cy="75" r="28" fill="#ffd791" opacity="0.18"/>
+    </g>
+    <g transform="translate(980, 0)">
+      <line x1="0" y1="0" x2="0" y2="60" stroke="#7a5a44" stroke-width="2"/>
+      <circle cy="75" r="14" fill="#ffd791"/>
+      <circle cy="75" r="28" fill="#ffd791" opacity="0.18"/>
+    </g>
+    <g transform="translate(1320, 0)">
+      <line x1="0" y1="0" x2="0" y2="60" stroke="#7a5a44" stroke-width="2"/>
+      <circle cy="75" r="14" fill="#ffd791"/>
+      <circle cy="75" r="28" fill="#ffd791" opacity="0.18"/>
+    </g>
+    <g transform="translate(1660, 0)">
+      <line x1="0" y1="0" x2="0" y2="60" stroke="#7a5a44" stroke-width="2"/>
+      <circle cy="75" r="14" fill="#ffd791"/>
+      <circle cy="75" r="28" fill="#ffd791" opacity="0.18"/>
+    </g>
+  </g>
+
+  <!-- One stylist + client silhouette at station 2 (adds life) -->
+  <g transform="translate(420, 470)" opacity="0.92">
+    <ellipse cx="120" cy="80" rx="44" ry="54" fill="#caa07d"/>
+    <path d="M50 130 Q120 100 190 130 L210 250 L30 250 Z" fill="#1a1410"/>
+  </g>
+  <g transform="translate(490, 410)" opacity="0.92">
+    <ellipse cx="40" cy="55" rx="34" ry="42" fill="#caa07d"/>
+    <path d="M-10 100 Q40 80 90 100 L100 200 L-20 200 Z" fill="#241914"/>
+  </g>
+
+  <!-- Vignette -->
+  <rect width="1800" height="900" fill="url(#vignetteF)"/>
+
+  <!-- PLACEHOLDER mark -->
+  <g opacity="0.18" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" fill="#1a1410">
+    <text x="1768" y="875" text-anchor="end" font-size="14" letter-spacing="2">PLACEHOLDER · FLEET-SALON</text>
+  </g>
+</svg>

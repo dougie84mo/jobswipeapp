@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Portrait placeholder for stylist testimonial: warm-tone illustration of a professional with deep skin tone and a short clean fade.">
+  <!-- PLACEHOLDER: stylist-2.svg — swap with real head-and-shoulders portrait (1:1, ~800px). -->
+  <defs>
+    <radialGradient id="bg2" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#e8c298"/>
+      <stop offset="1" stop-color="#7a4a2a"/>
+    </radialGradient>
+    <linearGradient id="skin2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a4a2c"/>
+      <stop offset="1" stop-color="#4a2a18"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg2)"/>
+  <!-- Shoulders (broader, dark shirt) -->
+  <path d="M20 600 Q300 360 580 600 Z" fill="#0d0805"/>
+  <ellipse cx="300" cy="430" rx="240" ry="55" fill="#1a1410"/>
+  <!-- Neck -->
+  <rect x="262" y="350" width="76" height="80" rx="20" fill="url(#skin2)"/>
+  <!-- Head -->
+  <ellipse cx="300" cy="260" rx="118" ry="142" fill="url(#skin2)"/>
+  <!-- Short cropped hair / fade -->
+  <path d="M190 220 Q198 110 300 100 Q402 110 410 220 Q400 200 300 198 Q200 200 190 220 Z" fill="#1a0e08"/>
+  <!-- Side fade -->
+  <path d="M190 220 Q190 260 200 290 Q198 250 200 220 Z" fill="#2a1810" opacity="0.6"/>
+  <path d="M410 220 Q410 260 400 290 Q402 250 400 220 Z" fill="#2a1810" opacity="0.6"/>
+  <!-- Brows / face hints -->
+  <ellipse cx="262" cy="260" rx="6" ry="4" fill="#1a0e08"/>
+  <ellipse cx="338" cy="260" rx="6" ry="4" fill="#1a0e08"/>
+  <rect x="252" y="240" width="22" height="4" rx="2" fill="#1a0e08"/>
+  <rect x="326" y="240" width="22" height="4" rx="2" fill="#1a0e08"/>
+  <path d="M276 320 Q300 332 324 320" stroke="#3a1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Subtle catchlight -->
+  <ellipse cx="245" cy="215" rx="18" ry="8" fill="#fff4dd" opacity="0.15"/>
+</svg>

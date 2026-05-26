@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Portrait placeholder for stylist testimonial: warm-tone illustration of a professional with long wavy dark hair.">
+  <!-- PLACEHOLDER: stylist-1.svg — swap with real head-and-shoulders portrait (1:1, ~800px). -->
+  <defs>
+    <radialGradient id="bg1" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#f3dcb8"/>
+      <stop offset="1" stop-color="#a87a52"/>
+    </radialGradient>
+    <linearGradient id="skin1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d8a679"/>
+      <stop offset="1" stop-color="#a87553"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg1)"/>
+  <!-- Shoulders -->
+  <path d="M40 600 Q300 380 560 600 Z" fill="#1f1814"/>
+  <ellipse cx="300" cy="440" rx="220" ry="50" fill="#2a2018"/>
+  <!-- Neck -->
+  <rect x="265" y="350" width="70" height="80" rx="20" fill="url(#skin1)"/>
+  <!-- Head -->
+  <ellipse cx="300" cy="270" rx="120" ry="148" fill="url(#skin1)"/>
+  <!-- Hair (long wavy dark) -->
+  <path d="M180 250 Q170 100 300 92 Q430 100 420 250
+           Q425 350 405 430 Q380 360 300 358 Q220 360 195 430
+           Q175 350 180 250 Z" fill="#2b1810"/>
+  <path d="M195 430 Q200 510 215 560 Q190 540 185 480 Z" fill="#2b1810"/>
+  <path d="M405 430 Q400 510 385 560 Q410 540 415 480 Z" fill="#2b1810"/>
+  <!-- Face hints -->
+  <ellipse cx="262" cy="270" rx="6" ry="4" fill="#2a1812"/>
+  <ellipse cx="338" cy="270" rx="6" ry="4" fill="#2a1812"/>
+  <path d="M278 332 Q300 342 322 332" stroke="#7a3a2a" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Subtle catchlight -->
+  <ellipse cx="240" cy="220" rx="20" ry="10" fill="#fff4dd" opacity="0.18"/>
+</svg>

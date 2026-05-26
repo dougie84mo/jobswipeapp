@@ -26,7 +26,13 @@ import type { ProviderId } from '@/ats/types';
 
 // Providers whose adapter is implemented and connectable from the app today.
 // Add the next provider's id here in the same PR that ships its adapter.
-const CONNECTABLE_PROVIDERS: ProviderId[] = ['mock', 'greenhouse', 'ashby', 'lever'];
+const CONNECTABLE_PROVIDERS: ProviderId[] = [
+  'mock',
+  'greenhouse',
+  'ashby',
+  'lever',
+  'workable',
+];
 
 interface ProviderMeta {
   name: string;
@@ -35,8 +41,14 @@ interface ProviderMeta {
   authType: 'none' | 'api_key' | 'oauth';
   apiKeyLabel?: string;
   apiKeyHint?: string;
+  // Greenhouse: the recruiter's Greenhouse user id for the On-Behalf-Of
+  // header. Captured as integrations.on_behalf_of_user_id.
   onBehalfOfLabel?: string;
   onBehalfOfHint?: string;
+  // Workable / Recruitee / future subdomain-scoped providers. Captured as
+  // integrations.extras.subdomain.
+  subdomainLabel?: string;
+  subdomainHint?: string;
 }
 
 const PROVIDER_META: Record<string, ProviderMeta> = {
@@ -67,7 +79,18 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
     apiKeyHint:
       'Settings → Integrations → API → Generate a new API key. Grant read scopes (postings:read, opportunities:read, stages:read, tags:read) plus write scopes (opportunities:write, opportunities:notes:write) if you want swipe actions to fire in Lever.',
   },
-  workable: { name: 'Workable', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  workable: {
+    name: 'Workable',
+    subtitle: 'Workable SPI v3 • Bearer token + subdomain',
+    ready: true,
+    authType: 'api_key',
+    apiKeyLabel: 'Workable access token',
+    apiKeyHint:
+      'Settings → Integrations → API Access Tokens → New token. Grant read scopes (r_jobs, r_candidates, r_stages) and write scopes (w_candidates, w_comments) for swipe actions to fire.',
+    subdomainLabel: 'Workable account subdomain',
+    subdomainHint:
+      'Your Workable URL is https://<subdomain>.workable.com — enter just the subdomain (e.g. "acme"). The API lives at https://<subdomain>.workable.com/spi/v3.',
+  },
   ashby: {
     name: 'Ashby',
     subtitle: 'Ashby API • API key auth',
@@ -105,12 +128,14 @@ export default function ConnectScreen() {
   const [expanded, setExpanded] = useState<ProviderId | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [onBehalfOfInput, setOnBehalfOfInput] = useState('');
+  const [subdomainInput, setSubdomainInput] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
 
   async function handleConnect(
     provider: ProviderId,
     apiKey: string,
     onBehalfOf?: string,
+    subdomain?: string,
   ) {
     setBusy(provider);
     try {
@@ -122,6 +147,7 @@ export default function ConnectScreen() {
         displayLabel: PROVIDER_META[provider]?.name ?? provider,
         credentials: apiKey,
         onBehalfOfUserId: onBehalfOf,
+        extras: subdomain ? { subdomain } : undefined,
       });
       try {
         const ok = await testConnection({ id: integrationId, provider });
@@ -142,6 +168,7 @@ export default function ConnectScreen() {
       setExpanded(null);
       setApiKeyInput('');
       setOnBehalfOfInput('');
+      setSubdomainInput('');
       setShowApiKey(false);
     }
   }
@@ -156,11 +183,25 @@ export default function ConnectScreen() {
           Alert.alert('API key required', meta.apiKeyHint ?? 'Enter your API key.');
           return;
         }
-        void handleConnect(provider, trimmed, onBehalfOfInput.trim() || undefined);
+        const subdomain = subdomainInput.trim();
+        if (meta.subdomainLabel && !subdomain) {
+          Alert.alert(
+            'Subdomain required',
+            meta.subdomainHint ?? 'Enter the account subdomain.',
+          );
+          return;
+        }
+        void handleConnect(
+          provider,
+          trimmed,
+          onBehalfOfInput.trim() || undefined,
+          subdomain || undefined,
+        );
       } else {
         setExpanded(provider);
         setApiKeyInput('');
         setOnBehalfOfInput('');
+        setSubdomainInput('');
         setShowApiKey(false);
       }
     } else {
@@ -300,6 +341,28 @@ export default function ConnectScreen() {
                       {meta.onBehalfOfHint ? (
                         <ThemedText type="small" themeColor="textSecondary">
                           {meta.onBehalfOfHint}
+                        </ThemedText>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {meta.subdomainLabel ? (
+                    <>
+                      <ThemedText type="smallBold" style={{ marginTop: Spacing.two }}>
+                        {meta.subdomainLabel}
+                      </ThemedText>
+                      <TextInput
+                        value={subdomainInput}
+                        onChangeText={setSubdomainInput}
+                        placeholder="e.g. acme"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[styles.input, { color: theme.text }]}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!isBusy}
+                      />
+                      {meta.subdomainHint ? (
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {meta.subdomainHint}
                         </ThemedText>
                       ) : null}
                     </>

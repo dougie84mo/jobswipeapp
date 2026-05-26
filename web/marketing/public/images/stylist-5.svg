@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Portrait placeholder for stylist testimonial: warm-tone illustration of a seasoned professional with olive skin and salt-and-pepper hair.">
+  <!-- PLACEHOLDER: stylist-5.svg — swap with real head-and-shoulders portrait (1:1, ~800px). -->
+  <defs>
+    <radialGradient id="bg5" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#efd2a8"/>
+      <stop offset="1" stop-color="#6f4828"/>
+    </radialGradient>
+    <linearGradient id="skin5" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c89870"/>
+      <stop offset="1" stop-color="#8a6240"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg5)"/>
+  <!-- Shoulders, soft knit -->
+  <path d="M30 600 Q300 365 570 600 Z" fill="#5a4030"/>
+  <ellipse cx="300" cy="430" rx="240" ry="55" fill="#6a4d3a"/>
+  <!-- Open neckline -->
+  <path d="M268 430 L300 460 L332 430 Z" fill="#c89870" opacity="0.7"/>
+  <!-- Neck -->
+  <rect x="270" y="350" width="60" height="80" rx="20" fill="url(#skin5)"/>
+  <!-- Head -->
+  <ellipse cx="300" cy="262" rx="114" ry="140" fill="url(#skin5)"/>
+  <!-- Hair: salt-and-pepper, short back-and-sides -->
+  <path d="M196 232 Q200 102 300 92 Q400 102 404 232 Q392 210 300 208 Q208 210 196 232 Z" fill="#3a2a22"/>
+  <!-- Silver streaks -->
+  <path d="M210 200 Q230 160 270 150" stroke="#cfc2b0" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M390 200 Q370 160 330 150" stroke="#cfc2b0" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <path d="M260 130 Q300 110 340 130" stroke="#cfc2b0" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.5"/>
+  <!-- Beard hint -->
+  <path d="M250 320 Q300 360 350 320 Q345 360 300 372 Q255 360 250 320 Z" fill="#3a2a22" opacity="0.55"/>
+  <!-- Face hints -->
+  <ellipse cx="265" cy="265" rx="6" ry="4" fill="#2a1812"/>
+  <ellipse cx="335" cy="265" rx="6" ry="4" fill="#2a1812"/>
+  <rect x="254" y="244" width="22" height="4" rx="2" fill="#3a2a22"/>
+  <rect x="324" y="244" width="22" height="4" rx="2" fill="#3a2a22"/>
+  <path d="M278 332 Q300 340 322 332" stroke="#5a2a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Crow's-feet (subtle) -->
+  <path d="M242 270 Q230 275 224 282" stroke="#8a6240" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M358 270 Q370 275 376 282" stroke="#8a6240" stroke-width="2" fill="none" opacity="0.6"/>
+  <!-- Subtle catchlight -->
+  <ellipse cx="250" cy="218" rx="20" ry="9" fill="#fff4dd" opacity="0.22"/>
+</svg>

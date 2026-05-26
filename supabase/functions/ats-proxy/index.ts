@@ -54,6 +54,17 @@ import {
   listTags as leverListTags,
   testConnection as leverTestConnection,
 } from '../_shared/lever.ts';
+import {
+  addCandidateComment as workableAddComment,
+  disqualifyCandidate as workableDisqualify,
+  listCandidatesForRequisition as workableListCandidates,
+  listRequisitions as workableListRequisitions,
+  listStages as workableListStages,
+  listTags as workableListTags,
+  moveStage as workableMoveStage,
+  setCandidateTags as workableSetTags,
+  testConnection as workableTestConnection,
+} from '../_shared/workable.ts';
 
 type Method =
   | 'testConnection'
@@ -84,6 +95,7 @@ interface IntegrationRow {
   user_id: string;
   provider: string;
   on_behalf_of_user_id: string | null;
+  extras: Record<string, unknown> | null;
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -135,7 +147,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: integrationRaw, error: lookupError } = await supabase
     .from('integrations')
-    .select('id, user_id, provider, on_behalf_of_user_id')
+    .select('id, user_id, provider, on_behalf_of_user_id, extras')
     .eq('id', body.integrationId)
     .maybeSingle();
 
@@ -178,6 +190,7 @@ Deno.serve(async (req: Request) => {
       body.method,
       apiKey,
       integration.on_behalf_of_user_id,
+      integration.extras ?? {},
       body.args ?? {},
     );
     return jsonResponse({ data: result });
@@ -211,6 +224,7 @@ async function dispatch(
   method: Method,
   apiKey: string,
   onBehalfOf: string | null,
+  extras: Record<string, unknown>,
   args: Record<string, unknown>,
 ): Promise<unknown> {
   if (provider === 'greenhouse') {
@@ -329,6 +343,62 @@ async function dispatch(
         );
       case 'addCandidateNote':
         return leverAddNote(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'text'),
+        );
+    }
+  }
+  if (provider === 'workable') {
+    const subdomain = typeof extras.subdomain === 'string' ? extras.subdomain : '';
+    if (!subdomain) {
+      throw new Error(
+        'Workable integration is missing extras.subdomain. Reconnect and supply your Workable account subdomain.',
+      );
+    }
+    switch (method) {
+      case 'testConnection':
+        return workableTestConnection(subdomain, apiKey);
+      case 'listRequisitions':
+        return workableListRequisitions(subdomain, apiKey);
+      case 'listCandidatesForRequisition':
+        return workableListCandidates(
+          subdomain,
+          apiKey,
+          str(args, 'requisitionExternalId'),
+        );
+      case 'listStages':
+        return workableListStages(
+          subdomain,
+          apiKey,
+          str(args, 'requisitionExternalId'),
+        );
+      case 'listTags':
+        return workableListTags(subdomain, apiKey);
+      case 'advanceCandidateStage':
+        return workableMoveStage(
+          subdomain,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'stageId'),
+        );
+      case 'rejectCandidate':
+        return workableDisqualify(
+          subdomain,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          strOpt(args, 'reasonId'),
+        );
+      case 'addCandidateTag':
+        return workableSetTags(
+          subdomain,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'tagId'),
+        );
+      case 'addCandidateNote':
+        return workableAddComment(
+          subdomain,
           apiKey,
           str(args, 'candidateExternalId'),
           str(args, 'text'),

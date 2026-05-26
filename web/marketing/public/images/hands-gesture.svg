@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" preserveAspectRatio="xMidYMid slice" role="img" aria-label="A stylist's hands at work near the mirror — scissors, comb, and a soft gesture toward the glass.">
+  <!--
+    PLACEHOLDER: hands-gesture.svg
+    Swap with: close crop of stylist's hands (scissors, comb, or gesturing near mirror).
+    Target aspect: 7:5, ~1400px wide.
+  -->
+  <defs>
+    <linearGradient id="bgGrad3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241914"/>
+      <stop offset="1" stop-color="#0a0706"/>
+    </linearGradient>
+    <radialGradient id="warm3" cx="0.6" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#ffd9a8" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffd9a8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d6a47a"/>
+      <stop offset="1" stop-color="#a47553"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d9d9dc"/>
+      <stop offset="0.5" stop-color="#f5f5f7"/>
+      <stop offset="1" stop-color="#a8a8ad"/>
+    </linearGradient>
+    <linearGradient id="mirrorTone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2d22"/>
+      <stop offset="1" stop-color="#120c08"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1400" height="1000" fill="url(#bgGrad3)"/>
+  <rect width="1400" height="1000" fill="url(#warm3)"/>
+
+  <!-- Mirror edge on the right (suggests scale + setting) -->
+  <rect x="850" y="0" width="550" height="1000" fill="url(#mirrorTone)"/>
+  <rect x="843" y="0" width="14" height="1000" fill="#caa170" opacity="0.5"/>
+  <!-- Faint reflection of hair strand -->
+  <path d="M1000 250 Q1050 400 1000 600 Q970 700 1000 850" stroke="#3a1f12" stroke-width="60" fill="none" opacity="0.5" stroke-linecap="round"/>
+
+  <!-- Hair lock being held -->
+  <g opacity="0.95">
+    <path d="M150 0 Q250 300 480 460 Q620 540 780 560" stroke="#2a1810" stroke-width="46" fill="none" stroke-linecap="round"/>
+    <path d="M180 60 Q260 320 460 470" stroke="#3a1f12" stroke-width="20" fill="none" stroke-linecap="round" opacity="0.7"/>
+  </g>
+
+  <!-- Hand holding hair (left) -->
+  <g transform="translate(420, 400)">
+    <!-- Forearm -->
+    <path d="M-80 180 Q40 60 180 100 L240 200 L40 280 Z" fill="url(#skin)"/>
+    <!-- Palm -->
+    <path d="M150 80 Q230 60 260 110 Q290 180 230 220 Q170 240 130 200 Q110 150 150 80 Z" fill="url(#skin)"/>
+    <!-- Fingers gripping a lock -->
+    <path d="M180 60 Q200 30 220 60 Q230 90 210 110 Z" fill="url(#skin)"/>
+    <path d="M210 60 Q230 32 250 65 Q258 95 235 115 Z" fill="url(#skin)"/>
+    <path d="M240 70 Q258 45 275 78 Q280 105 256 120 Z" fill="url(#skin)"/>
+    <!-- Subtle highlight -->
+    <path d="M180 90 Q210 85 245 95" stroke="#f1c79a" stroke-width="3" fill="none" opacity="0.5"/>
+  </g>
+
+  <!-- Scissors (right hand) -->
+  <g transform="translate(720, 470) rotate(-12)">
+    <!-- Blades -->
+    <path d="M0 0 L260 -10 L260 6 L0 16 Z" fill="url(#metal)"/>
+    <path d="M0 22 L260 32 L260 48 L0 38 Z" fill="url(#metal)"/>
+    <!-- Pivot -->
+    <circle cx="6" cy="19" r="10" fill="#5a5a5e"/>
+    <circle cx="6" cy="19" r="3" fill="#2a2a2e"/>
+    <!-- Handles -->
+    <path d="M-90 50 Q-110 80 -80 110 Q-50 130 -20 110 Q-2 90 -10 60 Z" fill="#3a3a3e"/>
+    <circle cx="-65" cy="85" r="22" fill="none" stroke="#3a3a3e" stroke-width="14"/>
+    <path d="M-90 -30 Q-110 -55 -80 -85 Q-50 -100 -20 -80 Q-4 -60 -12 -30 Z" fill="#3a3a3e"/>
+    <circle cx="-65" cy="-55" r="22" fill="none" stroke="#3a3a3e" stroke-width="14"/>
+  </g>
+
+  <!-- Stylist's other hand wrapping around scissors -->
+  <g transform="translate(640, 520)">
+    <path d="M0 60 Q70 -20 200 0 L210 90 L40 140 Z" fill="url(#skin)"/>
+    <path d="M-30 80 Q-50 130 0 160 Q60 170 110 140 Q110 100 80 90 Q30 100 -30 80 Z" fill="url(#skin)"/>
+  </g>
+
+  <!-- Subtle warm specular hits -->
+  <circle cx="900" cy="350" r="40" fill="#fff4dd" opacity="0.12"/>
+  <circle cx="1080" cy="650" r="60" fill="#fff4dd" opacity="0.08"/>
+
+  <!-- PLACEHOLDER mark -->
+  <g opacity="0.2" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" fill="#fff4dd">
+    <text x="1368" y="975" text-anchor="end" font-size="14" letter-spacing="2">PLACEHOLDER · HANDS-GESTURE</text>
+  </g>
+</svg>

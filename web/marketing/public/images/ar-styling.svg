@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" preserveAspectRatio="xMidYMid slice" role="img" aria-label="AR styling preview: a client looking at themselves in the mirror with subtle on-glass UI showing color, length and style options.">
+  <!--
+    PLACEHOLDER: ar-styling.svg
+    Swap with: close-up of client looking into mirror (preferably half-profile),
+    or stylist holding a tablet showing the AR preview.
+    Target aspect: 7:5, ~1400px wide.
+  -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1e18"/>
+      <stop offset="1" stop-color="#100a08"/>
+    </linearGradient>
+    <radialGradient id="warm2" cx="0.25" cy="0.3" r="0.6">
+      <stop offset="0" stop-color="#ffd9a8" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffd9a8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2d22"/>
+      <stop offset="1" stop-color="#0d0805"/>
+    </linearGradient>
+    <linearGradient id="cape" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1410"/>
+      <stop offset="1" stop-color="#080606"/>
+    </linearGradient>
+    <linearGradient id="uiAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffd79a"/>
+      <stop offset="1" stop-color="#f0a86b"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1400" height="1000" fill="url(#bgGrad)"/>
+  <rect width="1400" height="1000" fill="url(#warm2)"/>
+
+  <!-- Mirror frame on the right two-thirds -->
+  <g transform="translate(440, 60)">
+    <rect width="900" height="880" rx="10" fill="#0c0805" stroke="#caa170" stroke-width="3"/>
+    <rect x="6" y="6" width="888" height="868" rx="4" fill="url(#glass2)"/>
+
+    <!-- Reflected client (half profile) -->
+    <g transform="translate(220, 120)">
+      <!-- Cape / shoulders -->
+      <path d="M-60 420 Q230 350 530 420 L560 760 L-90 760 Z" fill="url(#cape)"/>
+      <ellipse cx="230" cy="400" rx="220" ry="50" fill="#1a1410"/>
+      <!-- Neck -->
+      <rect x="195" y="320" width="70" height="80" rx="20" fill="#d8a679"/>
+      <!-- Head, slightly turned -->
+      <ellipse cx="230" cy="220" rx="135" ry="170" fill="#d8a679"/>
+      <!-- Hair flowing -->
+      <path d="M95 200 Q90 60 230 50 Q370 60 365 220 Q360 290 340 360
+               Q300 320 230 318 Q160 320 120 360 Q100 290 95 200 Z" fill="#3a1f12"/>
+      <path d="M120 360 Q115 410 130 460 Q108 440 100 400 Z" fill="#3a1f12"/>
+      <path d="M340 360 Q345 410 330 460 Q352 440 360 400 Z" fill="#3a1f12"/>
+      <!-- Subtle face features (eye + lip hints) -->
+      <ellipse cx="195" cy="225" rx="6" ry="4" fill="#2a1812"/>
+      <ellipse cx="265" cy="225" rx="6" ry="4" fill="#2a1812"/>
+      <path d="M210 285 Q230 295 250 285" stroke="#7a3a2a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- AR UI overlay on glass -->
+    <!-- Top corner status -->
+    <g transform="translate(40, 40)" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+      <circle r="6" fill="#7ad88b"/>
+      <text x="16" y="5" font-size="16" fill="#fff4dd" opacity="0.9">LIVE PREVIEW</text>
+    </g>
+
+    <!-- Style chip cluster, bottom -->
+    <g transform="translate(40, 750)" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+      <rect width="820" height="100" rx="16" fill="#1a1410" opacity="0.75" stroke="#caa170" stroke-opacity="0.35"/>
+      <text x="22" y="30" font-size="13" letter-spacing="2" fill="#caa170">SUGGESTED LOOKS</text>
+
+      <!-- Chips -->
+      <g transform="translate(22, 50)">
+        <rect width="180" height="36" rx="18" fill="url(#uiAccent)"/>
+        <text x="90" y="23" text-anchor="middle" font-size="14" fill="#1a1410" font-weight="600">Soft Layers · Auburn</text>
+      </g>
+      <g transform="translate(214, 50)">
+        <rect width="170" height="36" rx="18" fill="#2a2018" stroke="#caa170" stroke-opacity="0.5"/>
+        <text x="85" y="23" text-anchor="middle" font-size="14" fill="#fff4dd">Blunt Bob · Ash</text>
+      </g>
+      <g transform="translate(396, 50)">
+        <rect width="200" height="36" rx="18" fill="#2a2018" stroke="#caa170" stroke-opacity="0.5"/>
+        <text x="100" y="23" text-anchor="middle" font-size="14" fill="#fff4dd">Curtain Bangs · Honey</text>
+      </g>
+      <g transform="translate(608, 50)">
+        <rect width="170" height="36" rx="18" fill="#2a2018" stroke="#caa170" stroke-opacity="0.5"/>
+        <text x="85" y="23" text-anchor="middle" font-size="14" fill="#fff4dd">Long Wave · Cocoa</text>
+      </g>
+    </g>
+
+    <!-- Right-side reaction marker -->
+    <g transform="translate(800, 360)" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+      <circle r="34" fill="#1a1410" opacity="0.7" stroke="#caa170"/>
+      <text y="6" text-anchor="middle" font-size="14" fill="#fff4dd">+12cm</text>
+    </g>
+  </g>
+
+  <!-- Foreground hand holding a tablet (lower left) - hint of stylist controlling preview -->
+  <g transform="translate(60, 660)">
+    <rect x="0" y="0" width="320" height="220" rx="22" fill="#1a1410" stroke="#caa170" stroke-width="3"/>
+    <rect x="12" y="12" width="296" height="196" rx="14" fill="#0d0805"/>
+    <!-- Mini preview inside tablet -->
+    <ellipse cx="160" cy="100" rx="40" ry="50" fill="#d8a679"/>
+    <path d="M120 80 Q120 30 160 28 Q200 30 200 80 Q198 100 192 118 Q180 105 160 105 Q140 105 128 118 Q122 100 120 80 Z" fill="#3a1f12"/>
+    <rect x="40" y="170" width="240" height="14" rx="7" fill="#2a2018"/>
+    <rect x="40" y="170" width="140" height="14" rx="7" fill="url(#uiAccent)"/>
+    <!-- Hand holding -->
+    <ellipse cx="-30" cy="170" rx="80" ry="40" fill="#caa07d" transform="rotate(-15 -30 170)"/>
+    <ellipse cx="20" cy="200" rx="50" ry="22" fill="#caa07d"/>
+  </g>
+
+  <!-- PLACEHOLDER mark -->
+  <g opacity="0.2" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" fill="#fff4dd">
+    <text x="1368" y="975" text-anchor="end" font-size="14" letter-spacing="2">PLACEHOLDER · AR-STYLING</text>
+  </g>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Portrait placeholder for stylist testimonial: warm-tone illustration of a professional with fair skin and blonde hair tied back.">
+  <!-- PLACEHOLDER: stylist-3.svg — swap with real head-and-shoulders portrait (1:1, ~800px). -->
+  <defs>
+    <radialGradient id="bg3" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#fdeacc"/>
+      <stop offset="1" stop-color="#c39060"/>
+    </radialGradient>
+    <linearGradient id="skin3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5d4ad"/>
+      <stop offset="1" stop-color="#d0a378"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg3)"/>
+  <!-- Shoulders, light apron -->
+  <path d="M40 600 Q300 380 560 600 Z" fill="#f0e1c4"/>
+  <ellipse cx="300" cy="440" rx="220" ry="50" fill="#e6d5b3"/>
+  <!-- Neck -->
+  <rect x="270" y="350" width="62" height="80" rx="20" fill="url(#skin3)"/>
+  <!-- Head -->
+  <ellipse cx="300" cy="270" rx="114" ry="140" fill="url(#skin3)"/>
+  <!-- Hair tied back (low bun) -->
+  <path d="M195 240 Q198 110 300 100 Q402 110 405 240 Q400 220 300 218 Q200 220 195 240 Z" fill="#e0b577"/>
+  <ellipse cx="300" cy="245" rx="100" ry="14" fill="#c79655"/>
+  <ellipse cx="430" cy="295" rx="32" ry="40" fill="#c79655"/>
+  <!-- Face hints -->
+  <ellipse cx="265" cy="270" rx="6" ry="4" fill="#3a2a1a"/>
+  <ellipse cx="335" cy="270" rx="6" ry="4" fill="#3a2a1a"/>
+  <rect x="256" y="248" width="20" height="3" rx="1" fill="#9c7a52"/>
+  <rect x="324" y="248" width="20" height="3" rx="1" fill="#9c7a52"/>
+  <path d="M280 330 Q300 342 320 330" stroke="#b94a4a" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Earring hint -->
+  <circle cx="190" cy="290" r="4" fill="#d4af6b"/>
+  <circle cx="410" cy="290" r="4" fill="#d4af6b"/>
+  <!-- Subtle catchlight -->
+  <ellipse cx="245" cy="220" rx="20" ry="10" fill="#fff4dd" opacity="0.4"/>
+</svg>
