@@ -7,11 +7,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getSupabase } from '@/lib/supabase';
 
+export interface NotificationPrefs {
+  push_enabled?: boolean;
+  // Future keys land here without a schema migration:
+  // per-integration filters, quiet-hours start/end, etc.
+}
+
 export interface RecruiterProfile {
   user_id: string;
   display_name: string | null;
   org_name: string | null;
   avatar_url: string | null;
+  notification_prefs: NotificationPrefs;
   created_at: string;
 }
 
@@ -25,7 +32,7 @@ export function useRecruiterProfile(userId: string | undefined) {
       if (!userId) return null;
       const { data, error } = await getSupabase()
         .from('recruiter_profiles')
-        .select('user_id, display_name, org_name, avatar_url, created_at')
+        .select('user_id, display_name, org_name, avatar_url, notification_prefs, created_at')
         .eq('user_id', userId)
         .maybeSingle();
       if (error) throw error;
@@ -38,15 +45,18 @@ export interface UpdateProfileInput {
   userId: string;
   display_name?: string | null;
   org_name?: string | null;
+  notification_prefs?: NotificationPrefs;
 }
 
 export function useUpdateRecruiterProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpdateProfileInput): Promise<void> => {
-      const patch: Record<string, string | null> = {};
+      const patch: Record<string, string | NotificationPrefs | null> = {};
       if (input.display_name !== undefined) patch.display_name = input.display_name;
       if (input.org_name !== undefined) patch.org_name = input.org_name;
+      if (input.notification_prefs !== undefined)
+        patch.notification_prefs = input.notification_prefs;
       if (Object.keys(patch).length === 0) return;
       const { error } = await getSupabase()
         .from('recruiter_profiles')

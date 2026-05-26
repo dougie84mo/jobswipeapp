@@ -41,9 +41,11 @@ export default function ProfileScreen() {
   const [displayName, setDisplayName] = useState('');
   const [orgName, setOrgName] = useState('');
   const [dirty, setDirty] = useState(false);
-  // Push notif preferences are local-only for now — wiring expo-notifications
-  // device tokens to a notification_prefs column is a follow-up.
-  const [pushEnabled, setPushEnabled] = useState(true);
+  // notification_prefs.push_enabled drives this toggle. Defaults to true on a
+  // freshly-created recruiter_profiles row (migration 0010), so users opt
+  // out rather than opt in.
+  const pushEnabled = profileQuery.data?.notification_prefs?.push_enabled ?? true;
+  const [pushPending, setPushPending] = useState(false);
 
   useEffect(() => {
     if (!dirty && profileQuery.data) {
@@ -51,6 +53,27 @@ export default function ProfileScreen() {
       setOrgName(profileQuery.data.org_name ?? '');
     }
   }, [profileQuery.data, dirty]);
+
+  async function handleTogglePush(next: boolean) {
+    if (!userId) return;
+    setPushPending(true);
+    try {
+      await updateProfile.mutateAsync({
+        userId,
+        notification_prefs: {
+          ...(profileQuery.data?.notification_prefs ?? {}),
+          push_enabled: next,
+        },
+      });
+    } catch (err) {
+      Alert.alert(
+        'Update failed',
+        err instanceof Error ? err.message : 'Unknown error',
+      );
+    } finally {
+      setPushPending(false);
+    }
+  }
 
   if (session.status === 'loading') {
     return (
@@ -186,10 +209,15 @@ export default function ProfileScreen() {
               <ThemedText type="smallBold">Push notifications</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Get notified when new candidates land on connected requisitions.
-                (Coming soon — toggle is local only.)
+                Push delivery requires a dev-client build; the preference saves
+                either way.
               </ThemedText>
             </View>
-            <Switch value={pushEnabled} onValueChange={setPushEnabled} />
+            <Switch
+              value={pushEnabled}
+              onValueChange={handleTogglePush}
+              disabled={pushPending || profileQuery.isLoading}
+            />
           </View>
         </ThemedView>
 
