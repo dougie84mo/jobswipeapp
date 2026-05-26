@@ -1,69 +1,125 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useCreateIntegration } from '@/features/integrations/queries';
+import {
+  useCreateIntegration,
+  useDeleteIntegration,
+} from '@/features/integrations/queries';
+import { useTheme } from '@/hooks/use-theme';
 import { testConnection } from '@/ats/client';
 import type { ProviderId } from '@/ats/types';
 
 // Providers whose adapter is implemented and connectable from the app today.
 // Add the next provider's id here in the same PR that ships its adapter.
-const CONNECTABLE_PROVIDERS: ProviderId[] = ['mock'];
+const CONNECTABLE_PROVIDERS: ProviderId[] = ['mock', 'greenhouse'];
 
-const PROVIDER_META: Record<
-  string,
-  { name: string; subtitle: string; ready: boolean }
-> = {
+interface ProviderMeta {
+  name: string;
+  subtitle: string;
+  ready: boolean;
+  authType: 'none' | 'api_key' | 'oauth';
+  apiKeyLabel?: string;
+  apiKeyHint?: string;
+}
+
+const PROVIDER_META: Record<string, ProviderMeta> = {
   mock: {
     name: 'Mock ATS',
     subtitle: 'Deterministic demo data — no real ATS required.',
     ready: true,
+    authType: 'none',
   },
-  greenhouse: { name: 'Greenhouse', subtitle: 'Harvest API • API key auth', ready: false },
-  lever: { name: 'Lever', subtitle: 'OAuth', ready: false },
-  workable: { name: 'Workable', subtitle: 'OAuth', ready: false },
-  ashby: { name: 'Ashby', subtitle: 'API key', ready: false },
-  smartrecruiters: { name: 'SmartRecruiters', subtitle: 'OAuth', ready: false },
-  workday: { name: 'Workday Recruiting', subtitle: 'OAuth', ready: false },
-  bamboohr: { name: 'BambooHR ATS', subtitle: 'API key', ready: false },
-  jazzhr: { name: 'JazzHR', subtitle: 'API key', ready: false },
-  recruitee: { name: 'Recruitee', subtitle: 'OAuth', ready: false },
-  teamtailor: { name: 'Teamtailor', subtitle: 'API key', ready: false },
-  icims: { name: 'iCIMS', subtitle: 'OAuth', ready: false },
-  manatal: { name: 'Manatal', subtitle: 'API key', ready: false },
+  greenhouse: {
+    name: 'Greenhouse',
+    subtitle: 'Harvest API • API key auth',
+    ready: true,
+    authType: 'api_key',
+    apiKeyLabel: 'Greenhouse Harvest API key',
+    apiKeyHint:
+      'Configure → Dev Center → API Credential Management → Manage API Keys. Use a Harvest API key with the "Get: List jobs" / "Get: List applications" / "Get: List candidates" / "Get: List job stages" / "Get: List tags" permissions.',
+  },
+  lever: { name: 'Lever', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  workable: { name: 'Workable', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  ashby: { name: 'Ashby', subtitle: 'API key', ready: false, authType: 'api_key' },
+  smartrecruiters: {
+    name: 'SmartRecruiters',
+    subtitle: 'OAuth',
+    ready: false,
+    authType: 'oauth',
+  },
+  workday: { name: 'Workday Recruiting', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  bamboohr: { name: 'BambooHR ATS', subtitle: 'API key', ready: false, authType: 'api_key' },
+  jazzhr: { name: 'JazzHR', subtitle: 'API key', ready: false, authType: 'api_key' },
+  recruitee: { name: 'Recruitee', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  teamtailor: { name: 'Teamtailor', subtitle: 'API key', ready: false, authType: 'api_key' },
+  icims: { name: 'iCIMS', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  manatal: { name: 'Manatal', subtitle: 'API key', ready: false, authType: 'api_key' },
 };
 
 export default function ConnectScreen() {
   const create = useCreateIntegration();
+  const remove = useDeleteIntegration();
+  const theme = useTheme();
   const [busy, setBusy] = useState<ProviderId | null>(null);
+  const [expanded, setExpanded] = useState<ProviderId | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState('');
 
-  async function handleConnect(provider: ProviderId) {
+  async function handleConnect(provider: ProviderId, apiKey: string) {
     setBusy(provider);
     try {
-      const ok = await testConnection({ id: '__pending__', provider });
-      if (!ok) {
-        Alert.alert(
-          'Couldn’t connect',
-          'The provider rejected the test request. Check your credentials and try again.',
-        );
-        return;
-      }
-      await create.mutateAsync({
+      // Save the integration first so the proxy can find it when testConnection
+      // looks it up by integrationId. We persist immediately and roll back
+      // (delete) if the test fails.
+      const integrationId = await create.mutateAsync({
         provider,
         displayLabel: PROVIDER_META[provider]?.name ?? provider,
-        // Until pgsodium is wired, anything non-empty is fine. The mock
-        // adapter ignores its credentials and uses a hardcoded key.
-        credentials: provider === 'mock' ? 'mock-key' : '',
+        credentials: apiKey,
       });
+      try {
+        const ok = await testConnection({ id: integrationId, provider });
+        if (!ok) throw new Error('The provider rejected the test request.');
+      } catch (err) {
+        // Roll back the row we just inserted so a failed test doesn't leave
+        // a broken integration with stored credentials. RLS lets the owner
+        // delete their own rows.
+        await remove.mutateAsync(integrationId).catch(() => {});
+        Alert.alert('Couldn’t connect', toMessage(err));
+        return;
+      }
       router.replace('/');
     } catch (err) {
       Alert.alert('Connect failed', toMessage(err));
     } finally {
       setBusy(null);
+      setExpanded(null);
+      setApiKeyInput('');
+    }
+  }
+
+  function handleConnectClick(provider: ProviderId) {
+    const meta = PROVIDER_META[provider];
+    if (!meta) return;
+    if (meta.authType === 'api_key') {
+      if (expanded === provider) {
+        const trimmed = apiKeyInput.trim();
+        if (!trimmed) {
+          Alert.alert('API key required', meta.apiKeyHint ?? 'Enter your API key.');
+          return;
+        }
+        void handleConnect(provider, trimmed);
+      } else {
+        setExpanded(provider);
+        setApiKeyInput('');
+      }
+    } else {
+      // mock — no creds needed; the proxy is bypassed and the in-app adapter
+      // hardcodes its own key.
+      void handleConnect(provider, 'mock-key');
     }
   }
 
@@ -83,6 +139,9 @@ export default function ConnectScreen() {
 
         {entries.map(([provider, meta]) => {
           const connectable = CONNECTABLE_PROVIDERS.includes(provider as ProviderId);
+          const isExpanded = expanded === provider;
+          const isBusy = busy === provider;
+          const isApiKey = meta.authType === 'api_key';
           return (
             <ThemedView key={provider} type="backgroundElement" style={styles.card}>
               <View style={styles.cardHeader}>
@@ -94,7 +153,7 @@ export default function ConnectScreen() {
                 </View>
                 {connectable ? (
                   <Pressable
-                    onPress={() => handleConnect(provider as ProviderId)}
+                    onPress={() => handleConnectClick(provider as ProviderId)}
                     disabled={busy !== null}
                     style={({ pressed }) => [
                       styles.connectButton,
@@ -103,7 +162,11 @@ export default function ConnectScreen() {
                     ]}
                   >
                     <ThemedText style={styles.connectButtonText}>
-                      {busy === provider ? 'Connecting…' : 'Connect'}
+                      {isBusy
+                        ? 'Connecting…'
+                        : isExpanded && isApiKey
+                          ? 'Save'
+                          : 'Connect'}
                     </ThemedText>
                   </Pressable>
                 ) : (
@@ -112,6 +175,28 @@ export default function ConnectScreen() {
                   </ThemedText>
                 )}
               </View>
+
+              {isExpanded && isApiKey ? (
+                <View style={styles.expandedForm}>
+                  <ThemedText type="smallBold">{meta.apiKeyLabel}</ThemedText>
+                  <TextInput
+                    value={apiKeyInput}
+                    onChangeText={setApiKeyInput}
+                    placeholder="Paste your API key"
+                    placeholderTextColor={theme.textSecondary}
+                    style={[styles.input, { color: theme.text }]}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    secureTextEntry
+                    editable={!isBusy}
+                  />
+                  {meta.apiKeyHint ? (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {meta.apiKeyHint}
+                    </ThemedText>
+                  ) : null}
+                </View>
+              ) : null}
             </ThemedView>
           );
         })}
@@ -130,6 +215,7 @@ const styles = StyleSheet.create({
   card: {
     padding: Spacing.three,
     borderRadius: Spacing.three,
+    gap: Spacing.three,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -143,6 +229,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   connectButtonText: { color: 'white', fontWeight: '600' },
+  expandedForm: {
+    gap: Spacing.two,
+  },
+  input: {
+    backgroundColor: 'rgba(127,127,127,0.18)',
+    borderRadius: 8,
+    padding: Spacing.three,
+    fontSize: 16,
+  },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
 });

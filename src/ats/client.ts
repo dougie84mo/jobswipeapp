@@ -1,12 +1,11 @@
 // Thin facade between the UI and the ATS adapters.
 //
-// Today: dispatches every call to the locally-registered adapter. This is
-// safe for the mock adapter (no network, no real credentials) and keeps the
-// UI from knowing how the data was sourced.
-//
-// Phase 4+: for adapters whose authType is `oauth2` or `api_key`, this
-// facade will instead call the `ats-proxy` Supabase edge function so OAuth
-// tokens never live on the device. The UI surface here stays the same.
+// The mock provider runs in-process (no creds, no network). Every other
+// provider routes through the ats-proxy Supabase edge function so OAuth
+// tokens and API keys never live on the device. The UI surface is the same
+// — testConnection / listRequisitions / listCandidates / listStages / listTags
+// — and capabilitiesFor stays purely local because adapter.capabilities() is
+// a pure function of the adapter shape, not credentials.
 
 import { bootstrapAdapters } from './bootstrap';
 import { getAdapter } from './registry';
@@ -20,6 +19,7 @@ import type {
   StoredCredentials,
   Tag,
 } from './types';
+import { getSupabase } from '@/lib/supabase';
 
 bootstrapAdapters();
 
@@ -28,33 +28,62 @@ export interface IntegrationRef {
   provider: ProviderId;
 }
 
-// Until pgsodium is wired up, mock integrations have no real credentials.
-// Hand the adapter the minimum it needs to pass `testConnection`.
-function credentialsFor(provider: ProviderId): StoredCredentials {
-  if (provider === 'mock') return { apiKey: 'mock-key' };
-  // Real providers go through ats-proxy in phase 4; the app never sees creds.
-  return {};
+function usesProxy(provider: ProviderId): boolean {
+  return provider !== 'mock';
+}
+
+async function invokeProxy<T>(
+  integration: IntegrationRef,
+  method: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
+  const { data, error } = await getSupabase().functions.invoke('ats-proxy', {
+    body: {
+      integrationId: integration.id,
+      method,
+      args: args ?? {},
+    },
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || !('data' in data)) {
+    throw new Error('ats-proxy returned an unexpected payload');
+  }
+  return (data as { data: T }).data;
+}
+
+// In-app mock execution path. Real providers never see these creds; the
+// proxy does its own lookup against integrations.credentials_encrypted.
+function mockCreds(provider: ProviderId): StoredCredentials {
+  return provider === 'mock' ? { apiKey: 'mock-key' } : {};
 }
 
 export async function testConnection(integration: IntegrationRef): Promise<boolean> {
-  const adapter = getAdapter(integration.provider);
-  return adapter.testConnection(credentialsFor(integration.provider));
+  if (usesProxy(integration.provider)) {
+    return invokeProxy<boolean>(integration, 'testConnection');
+  }
+  return getAdapter(integration.provider).testConnection(mockCreds(integration.provider));
 }
 
 export async function listRequisitions(
   integration: IntegrationRef,
 ): Promise<Page<Requisition>> {
-  const adapter = getAdapter(integration.provider);
-  return adapter.listRequisitions(credentialsFor(integration.provider));
+  if (usesProxy(integration.provider)) {
+    return invokeProxy<Page<Requisition>>(integration, 'listRequisitions');
+  }
+  return getAdapter(integration.provider).listRequisitions(mockCreds(integration.provider));
 }
 
 export async function listCandidates(
   integration: IntegrationRef,
   requisitionExternalId: string,
 ): Promise<Page<Candidate>> {
-  const adapter = getAdapter(integration.provider);
-  return adapter.listCandidatesForRequisition(
-    credentialsFor(integration.provider),
+  if (usesProxy(integration.provider)) {
+    return invokeProxy<Page<Candidate>>(integration, 'listCandidatesForRequisition', {
+      requisitionExternalId,
+    });
+  }
+  return getAdapter(integration.provider).listCandidatesForRequisition(
+    mockCreds(integration.provider),
     requisitionExternalId,
   );
 }
@@ -63,13 +92,20 @@ export async function listStages(
   integration: IntegrationRef,
   requisitionExternalId: string,
 ): Promise<Stage[]> {
-  const adapter = getAdapter(integration.provider);
-  return adapter.listStages(credentialsFor(integration.provider), requisitionExternalId);
+  if (usesProxy(integration.provider)) {
+    return invokeProxy<Stage[]>(integration, 'listStages', { requisitionExternalId });
+  }
+  return getAdapter(integration.provider).listStages(
+    mockCreds(integration.provider),
+    requisitionExternalId,
+  );
 }
 
 export async function listTags(integration: IntegrationRef): Promise<Tag[]> {
-  const adapter = getAdapter(integration.provider);
-  return adapter.listTags(credentialsFor(integration.provider));
+  if (usesProxy(integration.provider)) {
+    return invokeProxy<Tag[]>(integration, 'listTags');
+  }
+  return getAdapter(integration.provider).listTags(mockCreds(integration.provider));
 }
 
 export function capabilitiesFor(provider: ProviderId): AtsCapabilities {
