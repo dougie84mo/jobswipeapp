@@ -76,3 +76,6 @@ prompts/
 
 # Claude project context (local-only)
 CLAUDE.md
+
+# Unrelated parallel-project drops (a marketing site, etc.) — not part of Recruit Swipe
+web/
