@@ -1,11 +1,10 @@
-import { Link, router } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Link, router, Stack } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { signOut } from '@/features/auth/auth-actions';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
   useIntegrations,
@@ -21,19 +20,22 @@ export default function HomeScreen() {
       ? session.session.user.email
       : undefined;
 
-  async function handleSignOut() {
-    try {
-      await signOut();
-    } catch (err) {
-      Alert.alert('Sign-out failed', toMessage(err));
-    }
-  }
-
   return (
     <ThemedView style={styles.container}>
+      <Stack.Screen
+        options={{
+          title: 'Recruit Swipe',
+          headerRight: () => (
+            <Link href="/profile" asChild>
+              <Pressable hitSlop={8} style={styles.profileLink}>
+                <ThemedText type="linkPrimary">Profile</ThemedText>
+              </Pressable>
+            </Link>
+          ),
+        }}
+      />
       <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
         <View style={styles.header}>
-          <ThemedText type="title">Recruit Swipe</ThemedText>
           {email ? (
             <ThemedText themeColor="textSecondary">Signed in as {email}</ThemedText>
           ) : null}
@@ -82,12 +84,6 @@ export default function HomeScreen() {
           />
         )}
 
-        <Pressable
-          onPress={handleSignOut}
-          style={({ pressed }) => [styles.signOut, pressed && styles.pressed]}
-        >
-          <ThemedText themeColor="textSecondary">Sign out</ThemedText>
-        </Pressable>
       </SafeAreaView>
     </ThemedView>
   );
@@ -143,6 +139,8 @@ function toMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';
 }
 
+
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1, padding: Spacing.four, gap: Spacing.four },
@@ -176,6 +174,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  signOut: { padding: Spacing.three, alignSelf: 'flex-start' },
+  profileLink: { paddingHorizontal: Spacing.two },
   pressed: { opacity: 0.7 },
 });
