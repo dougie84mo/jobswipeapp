@@ -126,7 +126,7 @@ export default function ConnectScreen() {
         Alert.alert('Couldn’t connect', toMessage(err));
         return;
       }
-      router.replace('/');
+      router.replace('/connections');
     } catch (err) {
       Alert.alert('Connect failed', toMessage(err));
     } finally {

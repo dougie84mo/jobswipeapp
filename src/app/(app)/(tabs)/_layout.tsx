@@ -1,10 +1,11 @@
 import { Tabs } from 'expo-router';
 
-// Bottom tab navigator for the primary destinations: the recruiter's
-// existing connections (where the swipe flow starts) and their profile.
-// Adding a new connection is reached via a button on Profile so the tab
-// bar stays focused on the every-day workflow rather than the one-time
-// setup action.
+// Bottom tab navigator.
+//
+// Home is the landing dashboard — who's signed in, how the workflow goes,
+// what they should do next. Connections is the integrations list the
+// swipe flow starts from. Profile holds account settings and the
+// Connect ATS entry-point button.
 //
 // Detail screens (integration/[id]/*, swipe/[reqId], connect) live in the
 // parent (app) Stack so pushing to them hides the tab bar.
@@ -19,6 +20,13 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
+        options={{
+          title: 'Recruit Swipe',
+          tabBarLabel: 'Home',
+        }}
+      />
+      <Tabs.Screen
+        name="connections"
         options={{
           title: 'Connections',
           tabBarLabel: 'Connections',

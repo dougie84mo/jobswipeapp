@@ -1,145 +1,130 @@
-import { router } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/SessionProvider';
-import {
-  useIntegrations,
-  type IntegrationRow,
-} from '@/features/integrations/queries';
+import { useIntegrations } from '@/features/integrations/queries';
+import { useRecruiterProfile } from '@/features/profile/queries';
+
+// Dashboard / landing tab. Surfaces who's signed in, how the recruiter's
+// pipeline is wired up today, and a primary action that adapts based on
+// whether they've connected anything yet.
 
 export default function HomeScreen() {
   const session = useSession();
+  const userId =
+    session.status === 'ready' && session.session
+      ? session.session.user.id
+      : undefined;
+  const profileQuery = useRecruiterProfile(userId);
   const integrationsQuery = useIntegrations();
 
   const email =
     session.status === 'ready' && session.session
       ? session.session.user.email
       : undefined;
+  const displayName = profileQuery.data?.display_name;
+  const greeting = displayName ? `Welcome, ${displayName}` : 'Welcome';
+
+  const integrations = integrationsQuery.data ?? [];
+  const hasConnections = integrations.length > 0;
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
         <View style={styles.header}>
+          <ThemedText type="title">{greeting}</ThemedText>
           {email ? (
             <ThemedText themeColor="textSecondary">Signed in as {email}</ThemedText>
           ) : null}
         </View>
 
-        {integrationsQuery.isLoading ? (
-          <ThemedText themeColor="textSecondary">Loading…</ThemedText>
-        ) : integrationsQuery.isError ? (
-          <ThemedText themeColor="textSecondary">
-            Couldn’t load integrations: {toMessage(integrationsQuery.error)}
+        <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedText type="subtitle">How Recruit Swipe works</ThemedText>
+          <ThemedText>
+            • Connect your ATS (Greenhouse, Ashby, mock for demo){'\n'}
+            • Pick a requisition to source against{'\n'}
+            • Swipe right / left / up to advance, pass, or boost{'\n'}
+            • Configure what each swipe does in the ATS per integration
           </ThemedText>
-        ) : (integrationsQuery.data ?? []).length === 0 ? (
-          <ThemedView type="backgroundElement" style={styles.empty}>
-            <ThemedText type="smallBold">No ATS connected yet</ThemedText>
-            <ThemedText themeColor="textSecondary">
-              Open the Profile tab and tap Connect ATS to add your first one.
-              The mock provider has demo data so you can try the swipe deck
-              without a real account.
-            </ThemedText>
-          </ThemedView>
-        ) : (
-          <FlatList
-            data={integrationsQuery.data}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <IntegrationCard
-                item={item}
-                onPress={() => router.push(`/integration/${item.id}`)}
-              />
-            )}
-            ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
-          />
-        )}
+        </ThemedView>
+
+        <ThemedView type="backgroundElement" style={styles.statusCard}>
+          {integrationsQuery.isLoading ? (
+            <ThemedText themeColor="textSecondary">Loading…</ThemedText>
+          ) : hasConnections ? (
+            <>
+              <ThemedText type="smallBold">
+                {integrations.length} connection
+                {integrations.length === 1 ? '' : 's'}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {integrations.map((i) => i.display_label ?? i.provider).join(' • ')}
+              </ThemedText>
+              <Link href="/connections" asChild>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText style={styles.primaryButtonText}>
+                    Start sourcing
+                  </ThemedText>
+                </Pressable>
+              </Link>
+            </>
+          ) : (
+            <>
+              <ThemedText type="smallBold">No ATS connected yet</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Connect an ATS to start sourcing candidates. The mock provider
+                has demo data so you can try the swipe deck without a real
+                account.
+              </ThemedText>
+              <Pressable
+                onPress={() => router.push('/connect')}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText style={styles.primaryButtonText}>
+                  Connect your first ATS
+                </ThemedText>
+              </Pressable>
+            </>
+          )}
+        </ThemedView>
       </SafeAreaView>
     </ThemedView>
   );
-}
-
-function IntegrationCard({
-  item,
-  onPress,
-}: {
-  item: IntegrationRow;
-  onPress: () => void;
-}) {
-  const connectedAt = new Date(item.connected_at);
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.cardPressable,
-        pressed && styles.pressed,
-      ]}
-    >
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <View style={styles.cardRow}>
-          <ThemedText type="smallBold">
-            {item.display_label ?? providerLabel(item.provider)}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {item.status}
-          </ThemedText>
-        </View>
-        <ThemedText type="small" themeColor="textSecondary">
-          {providerLabel(item.provider)} • connected {connectedAt.toLocaleDateString()}
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
-  );
-}
-
-function providerLabel(provider: string): string {
-  switch (provider) {
-    case 'mock':
-      return 'Mock ATS';
-    case 'greenhouse':
-      return 'Greenhouse';
-    case 'ashby':
-      return 'Ashby';
-    case 'lever':
-      return 'Lever';
-    default:
-      return provider;
-  }
-}
-
-function toMessage(err: unknown): string {
-  return err instanceof Error ? err.message : 'Something went wrong';
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1, padding: Spacing.four, gap: Spacing.four },
   header: { gap: Spacing.one },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  empty: {
+  card: {
     padding: Spacing.four,
+    borderRadius: Spacing.three,
+    gap: Spacing.three,
+  },
+  statusCard: {
+    padding: Spacing.three,
     borderRadius: Spacing.three,
     gap: Spacing.two,
   },
-  listContent: { paddingBottom: Spacing.three },
-  cardPressable: { borderRadius: Spacing.three },
-  card: {
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
-    gap: Spacing.one,
-  },
-  cardRow: {
-    flexDirection: 'row',
+  primaryButton: {
+    backgroundColor: '#208AEF',
+    paddingVertical: Spacing.three,
+    borderRadius: 999,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    marginTop: Spacing.two,
   },
-  pressed: { opacity: 0.7 },
+  primaryButtonText: { color: 'white', fontWeight: '700' },
+  pressed: { opacity: 0.85 },
 });

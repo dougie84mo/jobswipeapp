@@ -1,0 +1,145 @@
+import { router } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
+import { useSession } from '@/features/auth/SessionProvider';
+import {
+  useIntegrations,
+  type IntegrationRow,
+} from '@/features/integrations/queries';
+
+export default function HomeScreen() {
+  const session = useSession();
+  const integrationsQuery = useIntegrations();
+
+  const email =
+    session.status === 'ready' && session.session
+      ? session.session.user.email
+      : undefined;
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
+        <View style={styles.header}>
+          {email ? (
+            <ThemedText themeColor="textSecondary">Signed in as {email}</ThemedText>
+          ) : null}
+        </View>
+
+        {integrationsQuery.isLoading ? (
+          <ThemedText themeColor="textSecondary">Loading…</ThemedText>
+        ) : integrationsQuery.isError ? (
+          <ThemedText themeColor="textSecondary">
+            Couldn’t load integrations: {toMessage(integrationsQuery.error)}
+          </ThemedText>
+        ) : (integrationsQuery.data ?? []).length === 0 ? (
+          <ThemedView type="backgroundElement" style={styles.empty}>
+            <ThemedText type="smallBold">No ATS connected yet</ThemedText>
+            <ThemedText themeColor="textSecondary">
+              Open the Profile tab and tap Connect ATS to add your first one.
+              The mock provider has demo data so you can try the swipe deck
+              without a real account.
+            </ThemedText>
+          </ThemedView>
+        ) : (
+          <FlatList
+            data={integrationsQuery.data}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <IntegrationCard
+                item={item}
+                onPress={() => router.push(`/integration/${item.id}`)}
+              />
+            )}
+            ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
+          />
+        )}
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+function IntegrationCard({
+  item,
+  onPress,
+}: {
+  item: IntegrationRow;
+  onPress: () => void;
+}) {
+  const connectedAt = new Date(item.connected_at);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.cardPressable,
+        pressed && styles.pressed,
+      ]}
+    >
+      <ThemedView type="backgroundElement" style={styles.card}>
+        <View style={styles.cardRow}>
+          <ThemedText type="smallBold">
+            {item.display_label ?? providerLabel(item.provider)}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {item.status}
+          </ThemedText>
+        </View>
+        <ThemedText type="small" themeColor="textSecondary">
+          {providerLabel(item.provider)} • connected {connectedAt.toLocaleDateString()}
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
+  );
+}
+
+function providerLabel(provider: string): string {
+  switch (provider) {
+    case 'mock':
+      return 'Mock ATS';
+    case 'greenhouse':
+      return 'Greenhouse';
+    case 'ashby':
+      return 'Ashby';
+    case 'lever':
+      return 'Lever';
+    default:
+      return provider;
+  }
+}
+
+function toMessage(err: unknown): string {
+  return err instanceof Error ? err.message : 'Something went wrong';
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  inner: { flex: 1, padding: Spacing.four, gap: Spacing.four },
+  header: { gap: Spacing.one },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  empty: {
+    padding: Spacing.four,
+    borderRadius: Spacing.three,
+    gap: Spacing.two,
+  },
+  listContent: { paddingBottom: Spacing.three },
+  cardPressable: { borderRadius: Spacing.three },
+  card: {
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    gap: Spacing.one,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pressed: { opacity: 0.7 },
+});
