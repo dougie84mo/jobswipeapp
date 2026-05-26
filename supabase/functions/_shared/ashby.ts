@@ -12,15 +12,45 @@
 // implemented. Reject is deferred: Ashby archives applications, but the
 // archive endpoint isn't in the LLM-formatted endpoint index we have to
 // verify against, so we skip rather than hit a guessed URL.
+//
+// Rate limit: 429 with Retry-After. fetchWithBackoff sleeps the advised
+// interval and retries up to MAX_RETRY_ATTEMPTS. Paginated reads use
+// Ashby's cursor model (moreDataAvailable + nextCursor in the envelope) up
+// to MAX_PAGES iterations; the proxy returns a flat array.
 
 const BASE_URL = 'https://api.ashbyhq.com';
+const MAX_PAGES = 10;
+const MAX_RETRY_ATTEMPTS = 3;
 
 function authHeader(apiKey: string): string {
   return `Basic ${btoa(`${apiKey}:`)}`;
 }
 
-async function call<T>(apiKey: string, path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
+    await res.body?.cancel();
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+  }
+  return fetch(url, init);
+}
+
+interface AshbyEnvelope<T> {
+  success: boolean;
+  results?: T;
+  errors?: string[];
+  moreDataAvailable?: boolean;
+  nextCursor?: string;
+}
+
+async function callEnvelope<T>(
+  apiKey: string,
+  path: string,
+  body: unknown,
+): Promise<AshbyEnvelope<T>> {
+  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: {
       Authorization: authHeader(apiKey),
@@ -35,15 +65,38 @@ async function call<T>(apiKey: string, path: string, body: unknown): Promise<T> 
       `Ashby ${res.status} ${res.statusText} for ${path}${errBody ? `: ${errBody}` : ''}`,
     );
   }
-  const json = (await res.json()) as { success: boolean; results?: T; errors?: string[] };
-  // Ashby wraps every response in { success, results, errors }. A 200 with
-  // success:false is still a logical failure — surface it.
+  const json = (await res.json()) as AshbyEnvelope<T>;
   if (json.success === false) {
     throw new Error(
       `Ashby ${path} returned success:false${json.errors?.length ? `: ${json.errors.join('; ')}` : ''}`,
     );
   }
-  return json.results as T;
+  return json;
+}
+
+async function call<T>(apiKey: string, path: string, body: unknown): Promise<T> {
+  const env = await callEnvelope<T>(apiKey, path, body);
+  return env.results as T;
+}
+
+// Walks Ashby's cursor pagination until moreDataAvailable goes false or
+// MAX_PAGES is hit. Concatenates the results arrays.
+async function callPaged<T>(
+  apiKey: string,
+  path: string,
+  baseBody: Record<string, unknown>,
+): Promise<T[]> {
+  const all: T[] = [];
+  let cursor: string | undefined;
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const body = cursor ? { ...baseBody, cursor } : baseBody;
+    const env = await callEnvelope<T[]>(apiKey, path, body);
+    const items = env.results ?? [];
+    all.push(...items);
+    if (!env.moreDataAvailable || !env.nextCursor) break;
+    cursor = env.nextCursor;
+  }
+  return all;
 }
 
 // ============================================================================
@@ -148,8 +201,11 @@ export async function listRequisitions(
   apiKey: string,
 ): Promise<NormPage<NormRequisition>> {
   // Ashby's job statuses: "Open" / "Closed" / "Archived" / "Draft". The
-  // filter is a list; we only care about Open for sourcing.
-  const jobs = await call<AshbyJob[]>(apiKey, '/job.list', { status: ['Open'] });
+  // filter is a list; we only care about Open for sourcing. Walks the
+  // cursor up to MAX_PAGES so accounts with hundreds of open reqs work.
+  const jobs = await callPaged<AshbyJob>(apiKey, '/job.list', {
+    status: ['Open'],
+  });
   return {
     items: jobs.map((j) => ({
       externalId: j.id,
@@ -166,7 +222,7 @@ export async function listCandidatesForRequisition(
   apiKey: string,
   jobExternalId: string,
 ): Promise<NormPage<NormCandidate>> {
-  const apps = await call<AshbyApplication[]>(apiKey, '/application.list', {
+  const apps = await callPaged<AshbyApplication>(apiKey, '/application.list', {
     jobId: jobExternalId,
     // Status filter omitted — Ashby treats applications without explicit
     // archive/hire as active. We render every candidate the recruiter still
@@ -213,7 +269,7 @@ export async function listStages(
 }
 
 export async function listTags(apiKey: string): Promise<NormTag[]> {
-  const tags = await call<AshbyTag[]>(apiKey, '/candidateTag.list', {});
+  const tags = await callPaged<AshbyTag>(apiKey, '/candidateTag.list', {});
   return tags.map((t) => ({ id: t.id, name: t.title }));
 }
 

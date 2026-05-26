@@ -9,18 +9,37 @@
 // Docs: https://developers.greenhouse.io/harvest.html
 // Auth: Basic with `${apiKey}:` (note the trailing colon — Greenhouse uses
 // the API key as the username and empty as the password).
-// Rate limit: surfaced via X-RateLimit-Limit / X-RateLimit-Remaining. 429
-// includes Retry-After. Today the proxy passes errors through; back-off is
-// a follow-up.
+// Rate limit: 429 with Retry-After (seconds). fetchWithBackoff retries up
+// to MAX_RETRY_ATTEMPTS times, sleeping the server-advised duration between
+// attempts. Paginated reads (jobs, applications, tags) auto-walk pages up
+// to MAX_PAGES; the proxy returns a single combined array so the UI
+// doesn't need a cursor surface yet.
 
 const BASE_URL = 'https://harvest.greenhouse.io/v1';
+const MAX_PAGES = 10;
+const PER_PAGE = 100;
+const MAX_RETRY_ATTEMPTS = 3;
 
 function authHeader(apiKey: string): string {
   return `Basic ${btoa(`${apiKey}:`)}`;
 }
 
+async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
+    // Drain the body so the connection can be reused.
+    await res.body?.cancel();
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+  }
+  // Exhausted retries — let the last attempt's response flow through so the
+  // caller surfaces the real 429 (with whatever body Greenhouse returns).
+  return fetch(url, init);
+}
+
 async function call<T>(apiKey: string, path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
     method: 'GET',
     headers: {
       Authorization: authHeader(apiKey),
@@ -36,6 +55,23 @@ async function call<T>(apiKey: string, path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+// Walks ?page=N&per_page=100 until a short page or MAX_PAGES is hit.
+// basePath can already contain query params; we append the page params with
+// the right separator.
+async function callPaged<T>(apiKey: string, basePath: string): Promise<T[]> {
+  const all: T[] = [];
+  const sep = basePath.includes('?') ? '&' : '?';
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const items = await call<T[]>(
+      apiKey,
+      `${basePath}${sep}per_page=${PER_PAGE}&page=${page}`,
+    );
+    all.push(...items);
+    if (items.length < PER_PAGE) break;
+  }
+  return all;
+}
+
 async function write<T>(
   apiKey: string,
   onBehalfOf: string,
@@ -43,7 +79,7 @@ async function write<T>(
   path: string,
   body: unknown,
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
     method,
     headers: {
       Authorization: authHeader(apiKey),
@@ -179,9 +215,8 @@ export async function testConnection(apiKey: string): Promise<boolean> {
 }
 
 export async function listRequisitions(apiKey: string): Promise<NormPage<NormRequisition>> {
-  // Open jobs only. per_page maxes at 500 but we cap at 100 to keep payloads
-  // sane; pagination follows in a follow-up commit alongside cursor support.
-  const jobs = await call<GhJob[]>(apiKey, '/jobs?status=open&per_page=100');
+  // Open jobs only. Walks pages until we run out (or MAX_PAGES).
+  const jobs = await callPaged<GhJob>(apiKey, '/jobs?status=open');
   return {
     items: jobs.map((j) => ({
       externalId: String(j.id),
@@ -203,9 +238,9 @@ export async function listCandidatesForRequisition(
   // is N+1 by design. The proxy caches result via the requisitions /
   // candidates Postgres tables (record_swipe upserts) so subsequent swipes
   // don't re-pay this cost on the same candidates.
-  const apps = await call<GhApplication[]>(
+  const apps = await callPaged<GhApplication>(
     apiKey,
-    `/applications?job_id=${encodeURIComponent(jobExternalId)}&status=active&per_page=50`,
+    `/applications?job_id=${encodeURIComponent(jobExternalId)}&status=active`,
   );
   const candidates = await Promise.all(
     apps.map(async (app) => {
@@ -245,7 +280,7 @@ export async function listStages(
 }
 
 export async function listTags(apiKey: string): Promise<NormTag[]> {
-  const tags = await call<GhTag[]>(apiKey, '/tags?per_page=200');
+  const tags = await callPaged<GhTag>(apiKey, '/tags');
   return tags.map((t) => ({ id: String(t.id), name: t.name }));
 }
 
