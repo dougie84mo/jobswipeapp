@@ -24,17 +24,30 @@ export default function IntegrationDetailScreen() {
           title: headerTitle,
           headerRight: () =>
             integration ? (
-              <Link
-                href={{
-                  pathname: '/integration/[id]/settings',
-                  params: { id: integration.id },
-                }}
-                asChild
-              >
-                <Pressable hitSlop={8} style={styles.settingsLink}>
-                  <ThemedText type="linkPrimary">Settings</ThemedText>
-                </Pressable>
-              </Link>
+              <View style={styles.headerActions}>
+                <Link
+                  href={{
+                    pathname: '/integration/[id]/activity',
+                    params: { id: integration.id },
+                  }}
+                  asChild
+                >
+                  <Pressable hitSlop={8} style={styles.headerLink}>
+                    <ThemedText type="linkPrimary">Activity</ThemedText>
+                  </Pressable>
+                </Link>
+                <Link
+                  href={{
+                    pathname: '/integration/[id]/settings',
+                    params: { id: integration.id },
+                  }}
+                  asChild
+                >
+                  <Pressable hitSlop={8} style={styles.headerLink}>
+                    <ThemedText type="linkPrimary">Settings</ThemedText>
+                  </Pressable>
+                </Link>
+              </View>
             ) : null,
         }}
       />
@@ -129,5 +142,10 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   pressed: { opacity: 0.7 },
-  settingsLink: { paddingHorizontal: Spacing.two },
+  headerActions: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    paddingRight: Spacing.two,
+  },
+  headerLink: { paddingHorizontal: Spacing.two },
 });

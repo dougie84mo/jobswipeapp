@@ -19,6 +19,7 @@ export default function AppLayout() {
       <Stack.Screen name="connect" options={{ title: 'Connect ATS' }} />
       <Stack.Screen name="integration/[id]/index" options={{ title: 'Integration' }} />
       <Stack.Screen name="integration/[id]/settings" options={{ title: 'Swipe actions' }} />
+      <Stack.Screen name="integration/[id]/activity" options={{ title: 'Activity' }} />
       <Stack.Screen name="swipe/[reqId]" options={{ title: 'Swipe' }} />
     </Stack>
   );
