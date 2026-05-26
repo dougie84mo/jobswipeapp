@@ -22,7 +22,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.inner} edges={['left', 'right']}>
         <View style={styles.header}>
           {email ? (
             <ThemedText themeColor="textSecondary">Signed in as {email}</ThemedText>

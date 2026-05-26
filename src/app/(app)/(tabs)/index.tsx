@@ -34,7 +34,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.flex} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.flex} edges={['left', 'right']}>
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
