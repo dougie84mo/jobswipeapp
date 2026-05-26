@@ -43,6 +43,17 @@ import {
   listTags as ashbyListTags,
   testConnection as ashbyTestConnection,
 } from '../_shared/ashby.ts';
+import {
+  addOpportunityNote as leverAddNote,
+  addOpportunityTag as leverAddTag,
+  archiveOpportunity as leverArchive,
+  changeStage as leverChangeStage,
+  listCandidatesForRequisition as leverListCandidates,
+  listRequisitions as leverListRequisitions,
+  listStages as leverListStages,
+  listTags as leverListTags,
+  testConnection as leverTestConnection,
+} from '../_shared/lever.ts';
 
 type Method =
   | 'testConnection'
@@ -278,6 +289,46 @@ async function dispatch(
         );
       case 'addCandidateNote':
         return ashbyCreateNote(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'text'),
+        );
+    }
+  }
+  if (provider === 'lever') {
+    switch (method) {
+      case 'testConnection':
+        return leverTestConnection(apiKey);
+      case 'listRequisitions':
+        return leverListRequisitions(apiKey);
+      case 'listCandidatesForRequisition':
+        return leverListCandidates(apiKey, str(args, 'requisitionExternalId'));
+      case 'listStages':
+        return leverListStages(apiKey, str(args, 'requisitionExternalId'));
+      case 'listTags':
+        return leverListTags(apiKey);
+      case 'advanceCandidateStage':
+        return leverChangeStage(
+          apiKey,
+          // Lever's externalId IS the opportunity id; no application lookup
+          // needed unlike Greenhouse / Ashby.
+          str(args, 'candidateExternalId'),
+          str(args, 'stageId'),
+        );
+      case 'rejectCandidate':
+        return leverArchive(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          strOpt(args, 'reasonId'),
+        );
+      case 'addCandidateTag':
+        return leverAddTag(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'tagId'),
+        );
+      case 'addCandidateNote':
+        return leverAddNote(
           apiKey,
           str(args, 'candidateExternalId'),
           str(args, 'text'),

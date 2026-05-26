@@ -5,6 +5,7 @@
 
 import { ashbyAdapter } from './adapters/ashby';
 import { greenhouseAdapter } from './adapters/greenhouse';
+import { leverAdapter } from './adapters/lever';
 import { mockAdapter } from './adapters/mock';
 import { registerAdapter } from './registry';
 
@@ -15,5 +16,6 @@ export function bootstrapAdapters(): void {
   registerAdapter(mockAdapter);
   registerAdapter(greenhouseAdapter);
   registerAdapter(ashbyAdapter);
+  registerAdapter(leverAdapter);
   bootstrapped = true;
 }

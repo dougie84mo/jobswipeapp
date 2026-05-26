@@ -26,7 +26,7 @@ import type { ProviderId } from '@/ats/types';
 
 // Providers whose adapter is implemented and connectable from the app today.
 // Add the next provider's id here in the same PR that ships its adapter.
-const CONNECTABLE_PROVIDERS: ProviderId[] = ['mock', 'greenhouse', 'ashby'];
+const CONNECTABLE_PROVIDERS: ProviderId[] = ['mock', 'greenhouse', 'ashby', 'lever'];
 
 interface ProviderMeta {
   name: string;
@@ -58,7 +58,15 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
     onBehalfOfHint:
       'Required for write actions (advance stage, reject, add note, apply tag). Find it in Greenhouse: People → click your name → the URL ends with /users/<id>.',
   },
-  lever: { name: 'Lever', subtitle: 'OAuth', ready: false, authType: 'oauth' },
+  lever: {
+    name: 'Lever',
+    subtitle: 'Lever Hire API • API key auth',
+    ready: true,
+    authType: 'api_key',
+    apiKeyLabel: 'Lever API key',
+    apiKeyHint:
+      'Settings → Integrations → API → Generate a new API key. Grant read scopes (postings:read, opportunities:read, stages:read, tags:read) plus write scopes (opportunities:write, opportunities:notes:write) if you want swipe actions to fire in Lever.',
+  },
   workable: { name: 'Workable', subtitle: 'OAuth', ready: false, authType: 'oauth' },
   ashby: {
     name: 'Ashby',
