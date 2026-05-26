@@ -91,6 +91,7 @@ export default function ConnectScreen() {
   const [expanded, setExpanded] = useState<ProviderId | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [onBehalfOfInput, setOnBehalfOfInput] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
 
   async function handleConnect(
     provider: ProviderId,
@@ -127,6 +128,7 @@ export default function ConnectScreen() {
       setExpanded(null);
       setApiKeyInput('');
       setOnBehalfOfInput('');
+      setShowApiKey(false);
     }
   }
 
@@ -145,6 +147,7 @@ export default function ConnectScreen() {
         setExpanded(provider);
         setApiKeyInput('');
         setOnBehalfOfInput('');
+        setShowApiKey(false);
       }
     } else {
       // mock — no creds needed; the proxy is bypassed and the in-app adapter
@@ -222,17 +225,38 @@ export default function ConnectScreen() {
               {isExpanded && isApiKey ? (
                 <View style={styles.expandedForm}>
                   <ThemedText type="smallBold">{meta.apiKeyLabel}</ThemedText>
-                  <TextInput
-                    value={apiKeyInput}
-                    onChangeText={setApiKeyInput}
-                    placeholder="Paste your API key"
-                    placeholderTextColor={theme.textSecondary}
-                    style={[styles.input, { color: theme.text }]}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    secureTextEntry
-                    editable={!isBusy}
-                  />
+                  <View style={styles.inputRow}>
+                    <TextInput
+                      value={apiKeyInput}
+                      onChangeText={setApiKeyInput}
+                      placeholder="Paste your API key"
+                      placeholderTextColor={theme.textSecondary}
+                      style={[styles.input, styles.inputFlex, { color: theme.text }]}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      spellCheck={false}
+                      // Default to masked for privacy. Tap "Show" to reveal —
+                      // when revealed, iOS's full text action menu (Paste,
+                      // Select, Select All, Look Up) is available on long
+                      // press. iOS deliberately strips that menu down to
+                      // just Paste while secureTextEntry is true.
+                      secureTextEntry={!showApiKey}
+                      editable={!isBusy}
+                    />
+                    <Pressable
+                      onPress={() => setShowApiKey((v) => !v)}
+                      hitSlop={8}
+                      style={({ pressed }) => [
+                        styles.eyeButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <ThemedText type="linkPrimary">
+                        {showApiKey ? 'Hide' : 'Show'}
+                      </ThemedText>
+                    </Pressable>
+                  </View>
                   {meta.apiKeyHint ? (
                     <ThemedText type="small" themeColor="textSecondary">
                       {meta.apiKeyHint}
@@ -311,6 +335,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: Spacing.three,
     fontSize: 16,
+  },
+  inputFlex: { flex: 1 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  eyeButton: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
   },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
