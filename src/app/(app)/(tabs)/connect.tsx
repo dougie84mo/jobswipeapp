@@ -1,4 +1,4 @@
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -162,7 +162,6 @@ export default function ConnectScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: 'Connect ATS' }} />
       <SafeAreaView
         style={styles.safeArea}
         edges={['bottom', 'left', 'right']}

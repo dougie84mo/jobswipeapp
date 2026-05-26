@@ -1,4 +1,4 @@
-import { Link, router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,18 +22,6 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Recruit Swipe',
-          headerRight: () => (
-            <Link href="/profile" asChild>
-              <Pressable hitSlop={8} style={styles.profileLink}>
-                <ThemedText type="linkPrimary">Profile</ThemedText>
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
       <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
         <View style={styles.header}>
           {email ? (
@@ -43,16 +31,6 @@ export default function HomeScreen() {
 
         <View style={styles.sectionHeader}>
           <ThemedText type="subtitle">Connected ATS</ThemedText>
-          <Link href="/connect" asChild>
-            <Pressable
-              style={({ pressed }) => [
-                styles.connectButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText style={styles.connectButtonText}>+ Connect</ThemedText>
-            </Pressable>
-          </Link>
         </View>
 
         {integrationsQuery.isLoading ? (
@@ -65,7 +43,7 @@ export default function HomeScreen() {
           <ThemedView type="backgroundElement" style={styles.empty}>
             <ThemedText type="smallBold">No ATS connected yet</ThemedText>
             <ThemedText themeColor="textSecondary">
-              Connect an ATS to start sourcing candidates. The mock provider has
+              Tap Connect below to add your first ATS. The mock provider has
               demo data so you can try the swipe deck without a real account.
             </ThemedText>
           </ThemedView>
@@ -83,7 +61,6 @@ export default function HomeScreen() {
             ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
           />
         )}
-
       </SafeAreaView>
     </ThemedView>
   );
@@ -128,6 +105,8 @@ function providerLabel(provider: string): string {
       return 'Mock ATS';
     case 'greenhouse':
       return 'Greenhouse';
+    case 'ashby':
+      return 'Ashby';
     case 'lever':
       return 'Lever';
     default:
@@ -139,8 +118,6 @@ function toMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';
 }
 
-
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1, padding: Spacing.four, gap: Spacing.four },
@@ -150,13 +127,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  connectButton: {
-    backgroundColor: '#208AEF',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 999,
-  },
-  connectButtonText: { color: 'white', fontWeight: '600' },
   empty: {
     padding: Spacing.four,
     borderRadius: Spacing.three,
@@ -174,6 +144,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  profileLink: { paddingHorizontal: Spacing.two },
   pressed: { opacity: 0.7 },
 });

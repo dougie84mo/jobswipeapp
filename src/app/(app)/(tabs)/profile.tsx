@@ -1,4 +1,4 @@
-import { Redirect, router, Stack } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -83,7 +83,6 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: 'Profile' }} />
       <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
         <ThemedView type="backgroundElement" style={styles.section}>
           <ThemedText type="smallBold">Account</ThemedText>
