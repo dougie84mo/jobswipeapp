@@ -9,8 +9,13 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useIntegration } from '@/features/integrations/queries';
 import { useRequisitions } from '@/features/integrations/requisitions';
+import {
+  actionsForDirection,
+  useIntegrationSettings,
+} from '@/features/integrations/settings';
+import { executeActions } from '@/features/swipes/execute-actions';
 import { useDeckCandidates, useRecordSwipe } from '@/features/swipes/queries';
-import type { Candidate, SwipeDirection } from '@/ats/types';
+import type { Candidate, ExecutedAction, SwipeDirection } from '@/ats/types';
 
 export default function SwipeDeckScreen() {
   const params = useLocalSearchParams<{ reqId: string; integrationId?: string }>();
@@ -26,9 +31,11 @@ export default function SwipeDeckScreen() {
     [requisitionsQuery.data, reqId],
   );
   const candidatesQuery = useDeckCandidates(integration, reqId);
+  const settingsQuery = useIntegrationSettings(integration?.id);
   const recordSwipe = useRecordSwipe();
 
   const [topIndex, setTopIndex] = useState(0);
+  const [lastOutcome, setLastOutcome] = useState<ExecutedAction[] | null>(null);
 
   if (!integrationId) {
     return <Redirect href="/" />;
@@ -42,12 +49,26 @@ export default function SwipeDeckScreen() {
     if (!integration || !requisition || !current) return;
     const candidateAtSwipe = current;
     setTopIndex((i) => i + 1);
+    const actions = actionsForDirection(settingsQuery.data, direction);
+    let executedActions: ExecutedAction[] = [];
+    try {
+      executedActions = await executeActions(
+        integration.provider,
+        candidateAtSwipe,
+        actions,
+      );
+      setLastOutcome(executedActions);
+    } catch (err) {
+      setLastOutcome(null);
+      Alert.alert('Swipe actions failed', toMessage(err));
+    }
     try {
       await recordSwipe.mutateAsync({
         integration,
         requisition,
         candidate: candidateAtSwipe,
         direction,
+        executedActions,
       });
     } catch (err) {
       Alert.alert('Swipe not saved', toMessage(err));
@@ -110,6 +131,15 @@ export default function SwipeDeckScreen() {
                 disabled={recordSwipe.isPending}
               />
             </View>
+            {lastOutcome && lastOutcome.length > 0 ? (
+              <ThemedText
+                themeColor="textSecondary"
+                style={styles.outcome}
+                type="small"
+              >
+                Last swipe ran {summarizeOutcome(lastOutcome)}
+              </ThemedText>
+            ) : null}
             <ThemedText
               themeColor="textSecondary"
               style={styles.deckCounter}
@@ -199,6 +229,17 @@ function toMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';
 }
 
+function summarizeOutcome(actions: ExecutedAction[]): string {
+  const success = actions.filter((a) => a.status === 'success').length;
+  const failure = actions.filter((a) => a.status === 'failure').length;
+  const skipped = actions.filter((a) => a.status === 'skipped').length;
+  const parts: string[] = [];
+  if (success) parts.push(`${success} action${success === 1 ? '' : 's'}`);
+  if (failure) parts.push(`${failure} failed`);
+  if (skipped) parts.push(`${skipped} skipped`);
+  return parts.join(' • ') || 'no actions';
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1, padding: Spacing.four, gap: Spacing.three },
@@ -254,4 +295,5 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
   deckCounter: { textAlign: 'center' },
+  outcome: { textAlign: 'center' },
 });

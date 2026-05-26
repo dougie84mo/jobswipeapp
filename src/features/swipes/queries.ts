@@ -5,7 +5,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { listCandidates } from '@/ats/client';
-import type { Candidate, Requisition, SwipeDirection } from '@/ats/types';
+import type {
+  Candidate,
+  ExecutedAction,
+  Requisition,
+  SwipeDirection,
+} from '@/ats/types';
 import type { IntegrationRow } from '@/features/integrations/queries';
 import { getSupabase } from '@/lib/supabase';
 
@@ -64,6 +69,7 @@ export interface RecordSwipeInput {
   requisition: Requisition;
   candidate: Candidate;
   direction: SwipeDirection;
+  executedActions?: ExecutedAction[];
 }
 
 export function useRecordSwipe() {
@@ -87,6 +93,7 @@ export function useRecordSwipe() {
         p_candidate_years_experience: input.candidate.yearsExperience ?? null,
         p_candidate_raw: input.candidate.raw ?? null,
         p_direction: input.direction,
+        p_executed_actions: input.executedActions ?? [],
       });
       if (error) throw error;
     },

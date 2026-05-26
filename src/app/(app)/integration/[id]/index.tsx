@@ -1,4 +1,4 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,7 +19,25 @@ export default function IntegrationDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: headerTitle }} />
+      <Stack.Screen
+        options={{
+          title: headerTitle,
+          headerRight: () =>
+            integration ? (
+              <Link
+                href={{
+                  pathname: '/integration/[id]/settings',
+                  params: { id: integration.id },
+                }}
+                asChild
+              >
+                <Pressable hitSlop={8} style={styles.settingsLink}>
+                  <ThemedText type="linkPrimary">Settings</ThemedText>
+                </Pressable>
+              </Link>
+            ) : null,
+        }}
+      />
       <SafeAreaView style={styles.inner} edges={['bottom', 'left', 'right']}>
         <ThemedText type="subtitle">Open requisitions</ThemedText>
         <ThemedText themeColor="textSecondary">
@@ -111,4 +129,5 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   pressed: { opacity: 0.7 },
+  settingsLink: { paddingHorizontal: Spacing.two },
 });
