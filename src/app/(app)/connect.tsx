@@ -107,13 +107,28 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   },
   smartrecruiters: {
     name: 'SmartRecruiters',
-    subtitle: 'OAuth',
+    subtitle: 'Customer API • OAuth 2.0 (Marketplace app)',
     ready: false,
     authType: 'oauth',
   },
-  workday: { name: 'Workday Recruiting', subtitle: 'OAuth', ready: false, authType: 'oauth' },
-  bamboohr: { name: 'BambooHR ATS', subtitle: 'API key', ready: false, authType: 'api_key' },
-  jazzhr: { name: 'JazzHR', subtitle: 'API key', ready: false, authType: 'api_key' },
+  workday: {
+    name: 'Workday Recruiting',
+    subtitle: 'Workday REST • OAuth 2.0 + tenant subdomain',
+    ready: false,
+    authType: 'oauth',
+  },
+  bamboohr: {
+    name: 'BambooHR ATS',
+    subtitle: 'BambooHR API • Basic auth + company subdomain',
+    ready: false,
+    authType: 'api_key',
+  },
+  jazzhr: {
+    name: 'JazzHR',
+    subtitle: 'Resumator API • API key (Pro plan or higher)',
+    ready: false,
+    authType: 'api_key',
+  },
   recruitee: {
     name: 'Recruitee',
     subtitle: 'Recruitee JSON API • Bearer token + company ID',
@@ -127,9 +142,24 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
     tenantHint:
       'Found at Settings → Apps and plugins → Personal API tokens — the numeric id shown alongside the token. The API path is https://api.recruitee.com/c/<company_id>.',
   },
-  teamtailor: { name: 'Teamtailor', subtitle: 'API key', ready: false, authType: 'api_key' },
-  icims: { name: 'iCIMS', subtitle: 'OAuth', ready: false, authType: 'oauth' },
-  manatal: { name: 'Manatal', subtitle: 'API key', ready: false, authType: 'api_key' },
+  teamtailor: {
+    name: 'Teamtailor',
+    subtitle: 'Teamtailor API v1 • Token auth (JSON:API)',
+    ready: false,
+    authType: 'api_key',
+  },
+  icims: {
+    name: 'iCIMS',
+    subtitle: 'Talent Cloud API • OAuth 2.0 + customer id',
+    ready: false,
+    authType: 'oauth',
+  },
+  manatal: {
+    name: 'Manatal',
+    subtitle: 'Manatal Open API v3 • Token auth',
+    ready: false,
+    authType: 'api_key',
+  },
   indeed: {
     name: 'Indeed',
     subtitle: 'Partner API — request access via Indeed for Employers',
