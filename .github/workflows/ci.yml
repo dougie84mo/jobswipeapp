@@ -27,6 +27,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test
+        run: npm test
+
   edge-functions:
     name: Edge functions — Deno fmt + lint + test
     runs-on: ubuntu-latest
