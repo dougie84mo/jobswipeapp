@@ -1,6 +1,7 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, router, Stack } from 'expo-router';
 import { useEffect } from 'react';
 
+import { ErrorBoundary } from '@/components/error-boundary';
 import { useSession } from '@/features/auth/SessionProvider';
 import { registerPushToken } from '@/features/notifications/register';
 
@@ -28,13 +29,15 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: true }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="connect" options={{ title: 'Connect a source' }} />
-      <Stack.Screen name="integration/[id]/index" options={{ title: 'Integration' }} />
-      <Stack.Screen name="integration/[id]/settings" options={{ title: 'Swipe actions' }} />
-      <Stack.Screen name="integration/[id]/activity" options={{ title: 'Activity' }} />
-      <Stack.Screen name="swipe/[reqId]" options={{ title: 'Swipe' }} />
-    </Stack>
+    <ErrorBoundary onReset={() => router.replace('/')}>
+      <Stack screenOptions={{ headerShown: true }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="connect" options={{ title: 'Connect a source' }} />
+        <Stack.Screen name="integration/[id]/index" options={{ title: 'Integration' }} />
+        <Stack.Screen name="integration/[id]/settings" options={{ title: 'Swipe actions' }} />
+        <Stack.Screen name="integration/[id]/activity" options={{ title: 'Activity' }} />
+        <Stack.Screen name="swipe/[reqId]" options={{ title: 'Swipe' }} />
+      </Stack>
+    </ErrorBoundary>
   );
 }
