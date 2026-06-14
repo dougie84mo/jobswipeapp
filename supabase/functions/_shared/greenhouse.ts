@@ -15,44 +15,16 @@
 // to MAX_PAGES; the proxy returns a single combined array so the UI
 // doesn't need a cursor surface yet.
 
+import { authHeaderBasic, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
+
 const BASE_URL = 'https://harvest.greenhouse.io/v1';
-const MAX_PAGES = 10;
-const PER_PAGE = 100;
-const MAX_RETRY_ATTEMPTS = 3;
-
-function authHeader(apiKey: string): string {
-  return `Basic ${btoa(`${apiKey}:`)}`;
-}
-
-async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
-  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
-    // Drain the body so the connection can be reused.
-    await res.body?.cancel();
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-  }
-  // Exhausted retries — let the last attempt's response flow through so the
-  // caller surfaces the real 429 (with whatever body Greenhouse returns).
-  return fetch(url, init);
-}
 
 async function call<T>(apiKey: string, path: string): Promise<T> {
-  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
-    method: 'GET',
-    headers: {
-      Authorization: authHeader(apiKey),
-      Accept: 'application/json',
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(
-      `Greenhouse ${res.status} ${res.statusText} for ${path}${body ? `: ${body}` : ''}`,
-    );
-  }
-  return (await res.json()) as T;
+  return callGet<T>(
+    `${BASE_URL}${path}`,
+    { Authorization: authHeaderBasic(apiKey), Accept: 'application/json' },
+    { provider: 'Greenhouse', route: path },
+  );
 }
 
 // Walks ?page=N&per_page=100 until a short page or MAX_PAGES is hit.
@@ -79,24 +51,18 @@ async function write<T>(
   path: string,
   body: unknown,
 ): Promise<T> {
-  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
+  return callWrite<T>(
+    `${BASE_URL}${path}`,
     method,
-    headers: {
-      Authorization: authHeader(apiKey),
+    {
+      Authorization: authHeaderBasic(apiKey),
       'On-Behalf-Of': onBehalfOf,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const respBody = await res.text().catch(() => '');
-    throw new Error(
-      `Greenhouse ${res.status} ${res.statusText} for ${method} ${path}${respBody ? `: ${respBody}` : ''}`,
-    );
-  }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+    body,
+    { provider: 'Greenhouse', route: path },
+  );
 }
 
 // Most Greenhouse writes target an application_id, but the app passes us

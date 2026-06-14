@@ -16,25 +16,9 @@
 //   reading current tags and PUT-ing the merged list — Lever replaces
 //   rather than appends.
 
+import { authHeaderBasic, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
+
 const BASE_URL = 'https://api.lever.co/v1';
-const MAX_PAGES = 10;
-const PER_PAGE = 100;
-const MAX_RETRY_ATTEMPTS = 3;
-
-function authHeader(apiKey: string): string {
-  return `Basic ${btoa(`${apiKey}:`)}`;
-}
-
-async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
-  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
-    await res.body?.cancel();
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-  }
-  return fetch(url, init);
-}
 
 interface LeverEnvelope<T> {
   data: T;
@@ -43,20 +27,11 @@ interface LeverEnvelope<T> {
 }
 
 async function call<T>(apiKey: string, path: string): Promise<LeverEnvelope<T>> {
-  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
-    method: 'GET',
-    headers: {
-      Authorization: authHeader(apiKey),
-      Accept: 'application/json',
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(
-      `Lever ${res.status} ${res.statusText} for ${path}${body ? `: ${body}` : ''}`,
-    );
-  }
-  return (await res.json()) as LeverEnvelope<T>;
+  return callGet<LeverEnvelope<T>>(
+    `${BASE_URL}${path}`,
+    { Authorization: authHeaderBasic(apiKey), Accept: 'application/json' },
+    { provider: 'Lever', route: path },
+  );
 }
 
 // Walks Lever's offset pagination until hasNext goes false or MAX_PAGES.
@@ -83,25 +58,20 @@ async function write<T>(
   path: string,
   body: unknown,
 ): Promise<T> {
-  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
+  // Lever's write responses are wrapped in { data: ... } same as reads; a 204
+  // yields undefined from callWrite, so unwrap defensively.
+  const env = await callWrite<LeverEnvelope<T> | undefined>(
+    `${BASE_URL}${path}`,
     method,
-    headers: {
-      Authorization: authHeader(apiKey),
+    {
+      Authorization: authHeaderBasic(apiKey),
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const respBody = await res.text().catch(() => '');
-    throw new Error(
-      `Lever ${res.status} ${res.statusText} for ${method} ${path}${respBody ? `: ${respBody}` : ''}`,
-    );
-  }
-  if (res.status === 204) return undefined as T;
-  // Lever's write responses are wrapped in { data: ... } same as reads.
-  const json = (await res.json()) as LeverEnvelope<T>;
-  return json.data;
+    body,
+    { provider: 'Lever', route: path },
+  );
+  return env?.data as T;
 }
 
 // ============================================================================

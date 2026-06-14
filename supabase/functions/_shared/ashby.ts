@@ -18,24 +18,9 @@
 // Ashby's cursor model (moreDataAvailable + nextCursor in the envelope) up
 // to MAX_PAGES iterations; the proxy returns a flat array.
 
+import { authHeaderBasic, callWrite, MAX_PAGES } from './http.ts';
+
 const BASE_URL = 'https://api.ashbyhq.com';
-const MAX_PAGES = 10;
-const MAX_RETRY_ATTEMPTS = 3;
-
-function authHeader(apiKey: string): string {
-  return `Basic ${btoa(`${apiKey}:`)}`;
-}
-
-async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
-  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
-    await res.body?.cancel();
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-  }
-  return fetch(url, init);
-}
 
 interface AshbyEnvelope<T> {
   success: boolean;
@@ -45,27 +30,24 @@ interface AshbyEnvelope<T> {
   nextCursor?: string;
 }
 
+// Every Ashby endpoint is POST, even reads. callWrite handles transport +
+// non-2xx; we additionally enforce the envelope's success flag.
 async function callEnvelope<T>(
   apiKey: string,
   path: string,
   body: unknown,
 ): Promise<AshbyEnvelope<T>> {
-  const res = await fetchWithBackoff(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: authHeader(apiKey),
+  const json = await callWrite<AshbyEnvelope<T>>(
+    `${BASE_URL}${path}`,
+    'POST',
+    {
+      Authorization: authHeaderBasic(apiKey),
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    throw new Error(
-      `Ashby ${res.status} ${res.statusText} for ${path}${errBody ? `: ${errBody}` : ''}`,
-    );
-  }
-  const json = (await res.json()) as AshbyEnvelope<T>;
+    body ?? {},
+    { provider: 'Ashby', route: path },
+  );
   if (json.success === false) {
     throw new Error(
       `Ashby ${path} returned success:false${json.errors?.length ? `: ${json.errors.join('; ')}` : ''}`,

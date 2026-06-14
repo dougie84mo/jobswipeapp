@@ -20,27 +20,10 @@
 //                                                      that fits the
 //                                                      action descriptor)
 
-const MAX_PAGES = 10;
-const PER_PAGE = 100;
-const MAX_RETRY_ATTEMPTS = 3;
+import { authHeaderBearer, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
 
 function baseUrl(companyId: string): string {
   return `https://api.recruitee.com/c/${companyId}`;
-}
-
-function authHeader(token: string): string {
-  return `Bearer ${token}`;
-}
-
-async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
-  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
-    await res.body?.cancel();
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-  }
-  return fetch(url, init);
 }
 
 async function call<T>(
@@ -48,20 +31,11 @@ async function call<T>(
   token: string,
   path: string,
 ): Promise<T> {
-  const res = await fetchWithBackoff(`${baseUrl(companyId)}${path}`, {
-    method: 'GET',
-    headers: {
-      Authorization: authHeader(token),
-      Accept: 'application/json',
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(
-      `Recruitee ${res.status} ${res.statusText} for ${path}${body ? `: ${body}` : ''}`,
-    );
-  }
-  return (await res.json()) as T;
+  return callGet<T>(
+    `${baseUrl(companyId)}${path}`,
+    { Authorization: authHeaderBearer(token), Accept: 'application/json' },
+    { provider: 'Recruitee', route: path },
+  );
 }
 
 // Recruitee pagination: page-based via ?page=N&limit=100. Responses don't
@@ -95,23 +69,17 @@ async function write<T>(
   path: string,
   body: unknown,
 ): Promise<T> {
-  const res = await fetchWithBackoff(`${baseUrl(companyId)}${path}`, {
+  return callWrite<T>(
+    `${baseUrl(companyId)}${path}`,
     method,
-    headers: {
-      Authorization: authHeader(token),
+    {
+      Authorization: authHeaderBearer(token),
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const respBody = await res.text().catch(() => '');
-    throw new Error(
-      `Recruitee ${res.status} ${res.statusText} for ${method} ${path}${respBody ? `: ${respBody}` : ''}`,
-    );
-  }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+    body,
+    { provider: 'Recruitee', route: path },
+  );
 }
 
 // ============================================================================

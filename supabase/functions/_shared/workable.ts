@@ -14,27 +14,10 @@
 // Rate limit: 5 requests/second per subdomain. 429 with Retry-After
 // honored by fetchWithBackoff.
 
-const MAX_PAGES = 10;
-const PER_PAGE = 100;
-const MAX_RETRY_ATTEMPTS = 3;
+import { authHeaderBearer, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
 
 function baseUrl(subdomain: string): string {
   return `https://${subdomain}.workable.com/spi/v3`;
-}
-
-function authHeader(token: string): string {
-  return `Bearer ${token}`;
-}
-
-async function fetchWithBackoff(url: string, init: RequestInit): Promise<Response> {
-  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-    const res = await fetch(url, init);
-    if (res.status !== 429) return res;
-    const retryAfter = Number(res.headers.get('Retry-After')) || 1;
-    await res.body?.cancel();
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-  }
-  return fetch(url, init);
 }
 
 async function call<T>(
@@ -42,20 +25,11 @@ async function call<T>(
   token: string,
   path: string,
 ): Promise<T> {
-  const res = await fetchWithBackoff(`${baseUrl(subdomain)}${path}`, {
-    method: 'GET',
-    headers: {
-      Authorization: authHeader(token),
-      Accept: 'application/json',
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(
-      `Workable ${res.status} ${res.statusText} for ${path}${body ? `: ${body}` : ''}`,
-    );
-  }
-  return (await res.json()) as T;
+  return callGet<T>(
+    `${baseUrl(subdomain)}${path}`,
+    { Authorization: authHeaderBearer(token), Accept: 'application/json' },
+    { provider: 'Workable', route: path },
+  );
 }
 
 // Workable pagination uses `Link` headers with rel="next" cursors plus
@@ -86,20 +60,11 @@ async function callPaged<T>(
 }
 
 async function callAbsolute<T>(token: string, url: string): Promise<T> {
-  const res = await fetchWithBackoff(url, {
-    method: 'GET',
-    headers: {
-      Authorization: authHeader(token),
-      Accept: 'application/json',
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(
-      `Workable ${res.status} ${res.statusText} for ${url}${body ? `: ${body}` : ''}`,
-    );
-  }
-  return (await res.json()) as T;
+  return callGet<T>(
+    url,
+    { Authorization: authHeaderBearer(token), Accept: 'application/json' },
+    { provider: 'Workable', route: url },
+  );
 }
 
 async function write<T>(
@@ -109,23 +74,17 @@ async function write<T>(
   path: string,
   body: unknown,
 ): Promise<T> {
-  const res = await fetchWithBackoff(`${baseUrl(subdomain)}${path}`, {
+  return callWrite<T>(
+    `${baseUrl(subdomain)}${path}`,
     method,
-    headers: {
-      Authorization: authHeader(token),
+    {
+      Authorization: authHeaderBearer(token),
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const respBody = await res.text().catch(() => '');
-    throw new Error(
-      `Workable ${res.status} ${res.statusText} for ${method} ${path}${respBody ? `: ${respBody}` : ''}`,
-    );
-  }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+    body,
+    { provider: 'Workable', route: path },
+  );
 }
 
 // ============================================================================
