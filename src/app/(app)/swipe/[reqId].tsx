@@ -46,6 +46,9 @@ export default function SwipeDeckScreen() {
 
   const [topIndex, setTopIndex] = useState(0);
   const [lastOutcome, setLastOutcome] = useState<ExecutedAction[] | null>(null);
+  // True for the whole swipe op (ATS write + record) so controls are blocked
+  // and re-entry is prevented until it settles.
+  const [swiping, setSwiping] = useState(false);
 
   const candidates = candidatesQuery.candidates;
   const current = candidates[topIndex];
@@ -67,9 +70,11 @@ export default function SwipeDeckScreen() {
   }
 
   async function handleSwipe(direction: SwipeDirection) {
-    if (!integration || !requisition || !current) return;
+    if (!integration || !requisition || !current || swiping) return;
     const candidateAtSwipe = current;
+    const swipedIndex = topIndex;
     const nextIndex = topIndex + 1;
+    setSwiping(true);
     setTopIndex(nextIndex);
     // Prefetch the next page before the recruiter runs out of cards.
     if (
@@ -102,7 +107,14 @@ export default function SwipeDeckScreen() {
         executedActions,
       });
     } catch (err) {
+      // Persisting the swipe failed — roll the card back so the recruiter's
+      // decision isn't silently dropped. (Controls are blocked during the
+      // swipe, so topIndex hasn't moved past nextIndex.) Note: any ATS action
+      // already sent will re-run if they swipe again.
+      setTopIndex(swipedIndex);
       Alert.alert('Swipe not saved', toMessage(err));
+    } finally {
+      setSwiping(false);
     }
   }
 
@@ -150,7 +162,7 @@ export default function SwipeDeckScreen() {
               // translateX/Y at zero rather than carrying state from the
               // previous card.
               key={current.externalId}
-              enabled={gestureSwiping && !recordSwipe.isPending}
+              enabled={gestureSwiping && !swiping}
               onSwipe={handleSwipe}
             >
               <CandidateCard candidate={current} />
@@ -160,19 +172,19 @@ export default function SwipeDeckScreen() {
                 label="Pass"
                 color="#E5484D"
                 onPress={() => handleSwipe('left')}
-                disabled={recordSwipe.isPending}
+                disabled={swiping}
               />
               <ActionButton
                 label="Boost"
                 color="#F5A524"
                 onPress={() => handleSwipe('up')}
-                disabled={recordSwipe.isPending}
+                disabled={swiping}
               />
               <ActionButton
                 label="Save"
                 color="#30A46C"
                 onPress={() => handleSwipe('right')}
-                disabled={recordSwipe.isPending}
+                disabled={swiping}
               />
             </View>
             {lastOutcome && lastOutcome.length > 0 ? (
