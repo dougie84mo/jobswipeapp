@@ -27,19 +27,33 @@ async function call<T>(apiKey: string, path: string): Promise<T> {
   );
 }
 
-// Walks ?page=N&per_page=100 until a short page or MAX_PAGES is hit.
-// basePath can already contain query params; we append the page params with
-// the right separator.
+// One page of Greenhouse's ?page=N&per_page=100 pagination. The opaque cursor
+// is just the page number as a string; '' (or undefined-coerced) means page 1.
+// nextCursor is the next page number, or null when a short page ends the walk.
+async function callOnePage<T>(
+  apiKey: string,
+  basePath: string,
+  cursor: string | undefined,
+): Promise<{ items: T[]; nextCursor: string | null }> {
+  const sep = basePath.includes('?') ? '&' : '?';
+  const page = cursor ? Number(cursor) : 1;
+  const items = await call<T[]>(
+    apiKey,
+    `${basePath}${sep}per_page=${PER_PAGE}&page=${page}`,
+  );
+  return { items, nextCursor: items.length < PER_PAGE ? null : String(page + 1) };
+}
+
+// Auto-walks all pages (up to MAX_PAGES) on top of callOnePage so the walk and
+// the on-demand single-page path share one implementation.
 async function callPaged<T>(apiKey: string, basePath: string): Promise<T[]> {
   const all: T[] = [];
-  const sep = basePath.includes('?') ? '&' : '?';
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const items = await call<T[]>(
-      apiKey,
-      `${basePath}${sep}per_page=${PER_PAGE}&page=${page}`,
-    );
+  let cursor: string | undefined = '';
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const { items, nextCursor } = await callOnePage<T>(apiKey, basePath, cursor);
     all.push(...items);
-    if (items.length < PER_PAGE) break;
+    if (!nextCursor) break;
+    cursor = nextCursor;
   }
   return all;
 }
@@ -180,34 +194,54 @@ export async function testConnection(apiKey: string): Promise<boolean> {
   return true;
 }
 
-export async function listRequisitions(apiKey: string): Promise<NormPage<NormRequisition>> {
-  // Open jobs only. Walks pages until we run out (or MAX_PAGES).
-  const jobs = await callPaged<GhJob>(apiKey, '/jobs?status=open');
-  return {
-    items: jobs.map((j) => ({
-      externalId: String(j.id),
-      title: j.name,
-      department: j.departments?.[0]?.name,
-      location: j.offices?.[0]?.location?.name ?? j.offices?.[0]?.name,
-      raw: j,
-    })),
-    nextCursor: null,
-  };
+export async function listRequisitions(
+  apiKey: string,
+  cursor?: string,
+): Promise<NormPage<NormRequisition>> {
+  // Open jobs only. No cursor → walk every page (nextCursor null). A cursor
+  // (including '') → a single page with the real next-page cursor.
+  const map = (j: GhJob): NormRequisition => ({
+    externalId: String(j.id),
+    title: j.name,
+    department: j.departments?.[0]?.name,
+    location: j.offices?.[0]?.location?.name ?? j.offices?.[0]?.name,
+    raw: j,
+  });
+  if (cursor === undefined) {
+    const jobs = await callPaged<GhJob>(apiKey, '/jobs?status=open');
+    return { items: jobs.map(map), nextCursor: null };
+  }
+  const { items, nextCursor } = await callOnePage<GhJob>(
+    apiKey,
+    '/jobs?status=open',
+    cursor,
+  );
+  return { items: items.map(map), nextCursor };
 }
 
 export async function listCandidatesForRequisition(
   apiKey: string,
   jobExternalId: string,
+  cursor?: string,
 ): Promise<NormPage<NormCandidate>> {
   // Active applications for a job, then fetch each candidate. Greenhouse
   // doesn't expand candidate detail on the applications endpoint, so this
   // is N+1 by design. The proxy caches result via the requisitions /
   // candidates Postgres tables (record_swipe upserts) so subsequent swipes
   // don't re-pay this cost on the same candidates.
-  const apps = await callPaged<GhApplication>(
-    apiKey,
-    `/applications?job_id=${encodeURIComponent(jobExternalId)}&status=active`,
-  );
+  //
+  // Pagination is driven by the applications page; no cursor → walk all
+  // (nextCursor null), a cursor → one page of applications + its next cursor.
+  const appsPath = `/applications?job_id=${encodeURIComponent(jobExternalId)}&status=active`;
+  let apps: GhApplication[];
+  let nextCursor: string | null = null;
+  if (cursor === undefined) {
+    apps = await callPaged<GhApplication>(apiKey, appsPath);
+  } else {
+    const page = await callOnePage<GhApplication>(apiKey, appsPath, cursor);
+    apps = page.items;
+    nextCursor = page.nextCursor;
+  }
   const candidates = await Promise.all(
     apps.map(async (app) => {
       const c = await call<GhCandidate>(apiKey, `/candidates/${app.candidate_id}`);
@@ -229,7 +263,7 @@ export async function listCandidatesForRequisition(
       } satisfies NormCandidate;
     }),
   );
-  return { items: candidates, nextCursor: null };
+  return { items: candidates, nextCursor };
 }
 
 export async function listStages(

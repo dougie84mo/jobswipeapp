@@ -275,6 +275,14 @@ function strOpt(args: Record<string, unknown>, key: string): string | undefined 
   return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
 
+// Pagination cursor: distinct from strOpt because '' is meaningful — it asks
+// for the FIRST page in single-page mode. Absent (undefined) means walk all
+// pages (the legacy default). Any string, including '', is passed through.
+function cursorArg(args: Record<string, unknown>): string | undefined {
+  const v = args['cursor'];
+  return typeof v === 'string' ? v : undefined;
+}
+
 async function dispatch(
   provider: string,
   method: Method,
@@ -288,9 +296,9 @@ async function dispatch(
       case 'testConnection':
         return ghTestConnection(apiKey);
       case 'listRequisitions':
-        return ghListRequisitions(apiKey);
+        return ghListRequisitions(apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
-        return ghListCandidates(apiKey, str(args, 'requisitionExternalId'));
+        return ghListCandidates(apiKey, str(args, 'requisitionExternalId'), cursorArg(args));
       case 'listStages':
         return ghListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
@@ -332,9 +340,9 @@ async function dispatch(
       case 'testConnection':
         return ashbyTestConnection(apiKey);
       case 'listRequisitions':
-        return ashbyListRequisitions(apiKey);
+        return ashbyListRequisitions(apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
-        return ashbyListCandidates(apiKey, str(args, 'requisitionExternalId'));
+        return ashbyListCandidates(apiKey, str(args, 'requisitionExternalId'), cursorArg(args));
       case 'listStages':
         return ashbyListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
@@ -370,9 +378,9 @@ async function dispatch(
       case 'testConnection':
         return leverTestConnection(apiKey);
       case 'listRequisitions':
-        return leverListRequisitions(apiKey);
+        return leverListRequisitions(apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
-        return leverListCandidates(apiKey, str(args, 'requisitionExternalId'));
+        return leverListCandidates(apiKey, str(args, 'requisitionExternalId'), cursorArg(args));
       case 'listStages':
         return leverListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
@@ -416,12 +424,13 @@ async function dispatch(
       case 'testConnection':
         return workableTestConnection(subdomain, apiKey);
       case 'listRequisitions':
-        return workableListRequisitions(subdomain, apiKey);
+        return workableListRequisitions(subdomain, apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
         return workableListCandidates(
           subdomain,
           apiKey,
           str(args, 'requisitionExternalId'),
+          cursorArg(args),
         );
       case 'listStages':
         return workableListStages(
@@ -473,12 +482,13 @@ async function dispatch(
       case 'testConnection':
         return recruiteeTestConnection(companyId, apiKey);
       case 'listRequisitions':
-        return recruiteeListRequisitions(companyId, apiKey);
+        return recruiteeListRequisitions(companyId, apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
         return recruiteeListCandidates(
           companyId,
           apiKey,
           str(args, 'requisitionExternalId'),
+          cursorArg(args),
         );
       case 'listStages':
         return recruiteeListStages(

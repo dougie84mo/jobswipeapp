@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -47,18 +47,38 @@ export default function SwipeDeckScreen() {
   const [topIndex, setTopIndex] = useState(0);
   const [lastOutcome, setLastOutcome] = useState<ExecutedAction[] | null>(null);
 
+  const candidates = candidatesQuery.candidates;
+  const current = candidates[topIndex];
+  const headerTitle = requisition?.title ?? 'Swipe';
+
+  // Keep paging when the current page filtered entirely to already-swiped
+  // candidates but more pages remain — otherwise the deck would stall on
+  // "Loading more" without ever requesting the next page. (Declared before the
+  // early return below so hook order stays stable.)
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = candidatesQuery;
+  useEffect(() => {
+    if (!current && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [current, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   if (!integrationId) {
     return <Redirect href="/" />;
   }
 
-  const candidates = candidatesQuery.data ?? [];
-  const current = candidates[topIndex];
-  const headerTitle = requisition?.title ?? 'Swipe';
-
   async function handleSwipe(direction: SwipeDirection) {
     if (!integration || !requisition || !current) return;
     const candidateAtSwipe = current;
-    setTopIndex((i) => i + 1);
+    const nextIndex = topIndex + 1;
+    setTopIndex(nextIndex);
+    // Prefetch the next page before the recruiter runs out of cards.
+    if (
+      nextIndex >= candidates.length - 2 &&
+      candidatesQuery.hasNextPage &&
+      !candidatesQuery.isFetchingNextPage
+    ) {
+      candidatesQuery.fetchNextPage();
+    }
     const actions = actionsForDirection(settingsQuery.data, direction);
     let executedActions: ExecutedAction[] = [];
     try {
@@ -112,13 +132,17 @@ export default function SwipeDeckScreen() {
             Requisition no longer available.
           </ThemedText>
         ) : !current ? (
-          <ThemedView type="backgroundElement" style={styles.doneCard}>
-            <ThemedText type="subtitle">All caught up</ThemedText>
-            <ThemedText themeColor="textSecondary">
-              You’ve gone through every candidate on this requisition. Check
-              back later for new applicants.
-            </ThemedText>
-          </ThemedView>
+          candidatesQuery.hasNextPage || candidatesQuery.isFetchingNextPage ? (
+            <ThemedText themeColor="textSecondary">Loading more candidates…</ThemedText>
+          ) : (
+            <ThemedView type="backgroundElement" style={styles.doneCard}>
+              <ThemedText type="subtitle">All caught up</ThemedText>
+              <ThemedText themeColor="textSecondary">
+                You’ve gone through every candidate on this requisition. Check
+                back later for new applicants.
+              </ThemedText>
+            </ThemedView>
+          )
         ) : (
           <>
             <SwipeableCard

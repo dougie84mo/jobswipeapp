@@ -68,27 +68,38 @@ export async function testConnection(integration: IntegrationRef): Promise<boole
   return getAdapter(integration.provider).testConnection(mockCreds(integration.provider));
 }
 
+// cursor semantics (threaded straight to the adapter / proxy):
+//   undefined → auto-walk every page, nextCursor null (default; non-deck callers)
+//   ''        → fetch the first page only, returning its real nextCursor
+//   '<token>' → fetch the page identified by the opaque token
 export async function listRequisitions(
   integration: IntegrationRef,
+  cursor?: string,
 ): Promise<Page<Requisition>> {
   if (usesProxy(integration.provider)) {
-    return invokeProxy<Page<Requisition>>(integration, 'listRequisitions');
+    return invokeProxy<Page<Requisition>>(integration, 'listRequisitions', { cursor });
   }
-  return getAdapter(integration.provider).listRequisitions(mockCreds(integration.provider));
+  return getAdapter(integration.provider).listRequisitions(
+    mockCreds(integration.provider),
+    cursor,
+  );
 }
 
 export async function listCandidates(
   integration: IntegrationRef,
   requisitionExternalId: string,
+  cursor?: string,
 ): Promise<Page<Candidate>> {
   if (usesProxy(integration.provider)) {
     return invokeProxy<Page<Candidate>>(integration, 'listCandidatesForRequisition', {
       requisitionExternalId,
+      cursor,
     });
   }
   return getAdapter(integration.provider).listCandidatesForRequisition(
     mockCreds(integration.provider),
     requisitionExternalId,
+    cursor,
   );
 }
 

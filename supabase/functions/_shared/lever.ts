@@ -34,20 +34,32 @@ async function call<T>(apiKey: string, path: string): Promise<LeverEnvelope<T>> 
   );
 }
 
-// Walks Lever's offset pagination until hasNext goes false or MAX_PAGES.
+// One page of Lever's offset pagination. The opaque cursor is the offset
+// token; '' (or undefined-coerced) means the first page (no offset).
+// nextCursor is Lever's `next` offset when hasNext, else null.
+async function callOnePage<T>(
+  apiKey: string,
+  basePath: string,
+  cursor: string | undefined,
+): Promise<{ items: T[]; nextCursor: string | null }> {
+  const sep = basePath.includes('?') ? '&' : '?';
+  const offsetPart = cursor ? `&offset=${encodeURIComponent(cursor)}` : '';
+  const env = await call<T[]>(apiKey, `${basePath}${sep}limit=${PER_PAGE}${offsetPart}`);
+  return {
+    items: env.data,
+    nextCursor: env.hasNext && env.next ? env.next : null,
+  };
+}
+
+// Auto-walks all pages (up to MAX_PAGES) on top of callOnePage.
 async function callPaged<T>(apiKey: string, basePath: string): Promise<T[]> {
   const all: T[] = [];
-  const sep = basePath.includes('?') ? '&' : '?';
-  let offset: string | undefined;
+  let cursor: string | undefined = '';
   for (let i = 0; i < MAX_PAGES; i++) {
-    const offsetPart = offset ? `&offset=${encodeURIComponent(offset)}` : '';
-    const env = await call<T[]>(
-      apiKey,
-      `${basePath}${sep}limit=${PER_PAGE}${offsetPart}`,
-    );
-    all.push(...env.data);
-    if (!env.hasNext || !env.next) break;
-    offset = env.next;
+    const { items, nextCursor } = await callOnePage<T>(apiKey, basePath, cursor);
+    all.push(...items);
+    if (!nextCursor) break;
+    cursor = nextCursor;
   }
   return all;
 }
@@ -163,36 +175,47 @@ export async function testConnection(apiKey: string): Promise<boolean> {
 
 export async function listRequisitions(
   apiKey: string,
+  cursor?: string,
 ): Promise<NormPage<NormRequisition>> {
   // Only published / active postings show up by default in /postings?state=
-  // — without a state filter we'd get drafts too. Pull both internal and
-  // published so the recruiter sees everything they're actively sourcing.
-  const postings = await callPaged<LeverPosting>(
+  // — without a state filter we'd get drafts too. No cursor → walk all
+  // (nextCursor null); a cursor → one page with the real next offset.
+  const map = (p: LeverPosting): NormRequisition => ({
+    externalId: p.id,
+    title: p.text,
+    department: p.categories?.department,
+    location: p.categories?.location,
+    raw: p,
+  });
+  if (cursor === undefined) {
+    const postings = await callPaged<LeverPosting>(apiKey, '/postings?state=published');
+    return { items: postings.map(map), nextCursor: null };
+  }
+  const { items, nextCursor } = await callOnePage<LeverPosting>(
     apiKey,
     '/postings?state=published',
+    cursor,
   );
-  return {
-    items: postings.map((p) => ({
-      externalId: p.id,
-      title: p.text,
-      department: p.categories?.department,
-      location: p.categories?.location,
-      raw: p,
-    })),
-    nextCursor: null,
-  };
+  return { items: items.map(map), nextCursor };
 }
 
 export async function listCandidatesForRequisition(
   apiKey: string,
   postingExternalId: string,
+  cursor?: string,
 ): Promise<NormPage<NormCandidate>> {
   // expand=contact inlines the candidate's name/headline/location so we don't
   // need a per-opportunity follow-up the way Greenhouse / Ashby do.
-  const opps = await callPaged<LeverOpportunity>(
-    apiKey,
-    `/opportunities?posting_id=${encodeURIComponent(postingExternalId)}&expand=contact`,
-  );
+  const path = `/opportunities?posting_id=${encodeURIComponent(postingExternalId)}&expand=contact`;
+  let opps: LeverOpportunity[];
+  let nextCursor: string | null = null;
+  if (cursor === undefined) {
+    opps = await callPaged<LeverOpportunity>(apiKey, path);
+  } else {
+    const page = await callOnePage<LeverOpportunity>(apiKey, path, cursor);
+    opps = page.items;
+    nextCursor = page.nextCursor;
+  }
   return {
     items: opps
       // Skip archived opportunities — Lever leaves them on the posting after
@@ -211,7 +234,7 @@ export async function listCandidatesForRequisition(
           raw: o,
         } satisfies NormCandidate;
       }),
-    nextCursor: null,
+    nextCursor,
   };
 }
 

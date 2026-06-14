@@ -2,12 +2,18 @@
 // recruiter's prior swipes for this requisition) and the recordSwipe mutation
 // that persists each swipe to Postgres.
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { listCandidates } from '@/ats/client';
 import type {
   Candidate,
   ExecutedAction,
+  Page,
   Requisition,
   SwipeDirection,
 } from '@/ats/types';
@@ -38,30 +44,66 @@ async function fetchSwipedExternalIds(
   return new Set(rows.map((r) => r.external_id));
 }
 
+export interface DeckResult {
+  candidates: Candidate[];
+  isLoading: boolean;
+  isError: boolean;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  fetchNextPage: () => void;
+}
+
+// Candidates for the swipe deck, paged on demand. Each page is fetched with an
+// opaque cursor ('' for the first page, then page.nextCursor), so decks deeper
+// than the client's MAX_PAGES auto-walk cap are reachable.
+//
+// Swiped candidates are filtered out at fetch time, per page. The deck query
+// key is intentionally NOT invalidated when a swipe is recorded, so already
+// loaded pages stay stable and the consumer can advance a simple top index
+// without the list reshuffling under it.
 export function useDeckCandidates(
   integration: IntegrationRow | null | undefined,
   requisitionExternalId: string | undefined,
-) {
+): DeckResult {
   const enabled = Boolean(integration && requisitionExternalId);
-  return useQuery({
-    queryKey: [
-      'deck',
-      integration?.id ?? null,
-      requisitionExternalId ?? null,
-    ],
+  const query = useInfiniteQuery({
+    queryKey: ['deck', integration?.id ?? null, requisitionExternalId ?? null],
     enabled,
-    queryFn: async (): Promise<Candidate[]> => {
-      if (!integration || !requisitionExternalId) return [];
+    initialPageParam: '',
+    queryFn: async ({ pageParam }): Promise<Page<Candidate>> => {
+      if (!integration || !requisitionExternalId) {
+        return { items: [], nextCursor: null };
+      }
       const [page, swiped] = await Promise.all([
         listCandidates(
           { id: integration.id, provider: integration.provider },
           requisitionExternalId,
+          pageParam,
         ),
         fetchSwipedExternalIds(integration.id, requisitionExternalId),
       ]);
-      return page.items.filter((c) => !swiped.has(c.externalId));
+      return {
+        items: page.items.filter((c) => !swiped.has(c.externalId)),
+        nextCursor: page.nextCursor,
+      };
     },
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
+
+  // query.fetchNextPage is stable across renders in react-query v5, so this
+  // callback is stable too — safe to depend on from the consumer's effect.
+  const fetchNextPage = useCallback(() => {
+    void query.fetchNextPage();
+  }, [query.fetchNextPage]);
+
+  return {
+    candidates: (query.data?.pages ?? []).flatMap((p) => p.items),
+    isLoading: query.isLoading,
+    isError: query.isError,
+    hasNextPage: query.hasNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+    fetchNextPage,
+  };
 }
 
 export interface RecordSwipeInput {

@@ -61,22 +61,36 @@ async function call<T>(apiKey: string, path: string, body: unknown): Promise<T> 
   return env.results as T;
 }
 
-// Walks Ashby's cursor pagination until moreDataAvailable goes false or
-// MAX_PAGES is hit. Concatenates the results arrays.
+// One page of Ashby's cursor pagination. The opaque cursor maps directly to
+// Ashby's body `cursor`; '' (or undefined-coerced) means the first page.
+// nextCursor is Ashby's nextCursor when moreDataAvailable, else null.
+async function callOnePage<T>(
+  apiKey: string,
+  path: string,
+  baseBody: Record<string, unknown>,
+  cursor: string | undefined,
+): Promise<{ items: T[]; nextCursor: string | null }> {
+  const body = cursor ? { ...baseBody, cursor } : baseBody;
+  const env = await callEnvelope<T[]>(apiKey, path, body);
+  return {
+    items: env.results ?? [],
+    nextCursor: env.moreDataAvailable && env.nextCursor ? env.nextCursor : null,
+  };
+}
+
+// Auto-walks all pages (up to MAX_PAGES) on top of callOnePage.
 async function callPaged<T>(
   apiKey: string,
   path: string,
   baseBody: Record<string, unknown>,
 ): Promise<T[]> {
   const all: T[] = [];
-  let cursor: string | undefined;
+  let cursor: string | undefined = '';
   for (let i = 0; i < MAX_PAGES; i++) {
-    const body = cursor ? { ...baseBody, cursor } : baseBody;
-    const env = await callEnvelope<T[]>(apiKey, path, body);
-    const items = env.results ?? [];
+    const { items, nextCursor } = await callOnePage<T>(apiKey, path, baseBody, cursor);
     all.push(...items);
-    if (!env.moreDataAvailable || !env.nextCursor) break;
-    cursor = env.nextCursor;
+    if (!nextCursor) break;
+    cursor = nextCursor;
   }
   return all;
 }
@@ -181,35 +195,56 @@ export async function testConnection(apiKey: string): Promise<boolean> {
 
 export async function listRequisitions(
   apiKey: string,
+  cursor?: string,
 ): Promise<NormPage<NormRequisition>> {
   // Ashby's job statuses: "Open" / "Closed" / "Archived" / "Draft". The
-  // filter is a list; we only care about Open for sourcing. Walks the
-  // cursor up to MAX_PAGES so accounts with hundreds of open reqs work.
-  const jobs = await callPaged<AshbyJob>(apiKey, '/job.list', {
-    status: ['Open'],
+  // filter is a list; we only care about Open for sourcing. No cursor → walk
+  // all pages (nextCursor null); a cursor → one page + its real next cursor.
+  const map = (j: AshbyJob): NormRequisition => ({
+    externalId: j.id,
+    title: j.title,
+    department: j.department?.name,
+    location: j.location?.name,
+    raw: j,
   });
-  return {
-    items: jobs.map((j) => ({
-      externalId: j.id,
-      title: j.title,
-      department: j.department?.name,
-      location: j.location?.name,
-      raw: j,
-    })),
-    nextCursor: null,
-  };
+  const baseBody = { status: ['Open'] };
+  if (cursor === undefined) {
+    const jobs = await callPaged<AshbyJob>(apiKey, '/job.list', baseBody);
+    return { items: jobs.map(map), nextCursor: null };
+  }
+  const { items, nextCursor } = await callOnePage<AshbyJob>(
+    apiKey,
+    '/job.list',
+    baseBody,
+    cursor,
+  );
+  return { items: items.map(map), nextCursor };
 }
 
 export async function listCandidatesForRequisition(
   apiKey: string,
   jobExternalId: string,
+  cursor?: string,
 ): Promise<NormPage<NormCandidate>> {
-  const apps = await callPaged<AshbyApplication>(apiKey, '/application.list', {
-    jobId: jobExternalId,
-    // Status filter omitted — Ashby treats applications without explicit
-    // archive/hire as active. We render every candidate the recruiter still
-    // has in the pipeline.
-  });
+  // Status filter omitted — Ashby treats applications without explicit
+  // archive/hire as active. We render every candidate the recruiter still
+  // has in the pipeline. Pagination follows the application page; no cursor →
+  // walk all (nextCursor null), a cursor → one page + its next cursor.
+  const baseBody = { jobId: jobExternalId };
+  let apps: AshbyApplication[];
+  let nextCursor: string | null = null;
+  if (cursor === undefined) {
+    apps = await callPaged<AshbyApplication>(apiKey, '/application.list', baseBody);
+  } else {
+    const page = await callOnePage<AshbyApplication>(
+      apiKey,
+      '/application.list',
+      baseBody,
+      cursor,
+    );
+    apps = page.items;
+    nextCursor = page.nextCursor;
+  }
   const candidates = await Promise.all(
     apps.map(async (app) => {
       const c = await call<AshbyCandidate>(apiKey, '/candidate.info', {
@@ -230,7 +265,7 @@ export async function listCandidatesForRequisition(
       } satisfies NormCandidate;
     }),
   );
-  return { items: candidates, nextCursor: null };
+  return { items: candidates, nextCursor };
 }
 
 export async function listStages(

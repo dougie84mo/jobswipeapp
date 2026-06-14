@@ -32,9 +32,29 @@ async function call<T>(
   );
 }
 
-// Workable pagination uses `Link` headers with rel="next" cursors plus
-// `paging.next` in the JSON body. Both forms work; we read body.paging.next
-// since it's simpler than parsing Link.
+// One page of Workable pagination. Workable uses `Link` rel="next" plus
+// `paging.next` (an absolute URL) in the body; we read paging.next. The opaque
+// cursor IS that next URL; '' (or undefined-coerced) means the first relative
+// page. nextCursor is the absolute next URL, or null when finished.
+async function callOnePage<T>(
+  subdomain: string,
+  token: string,
+  basePath: string,
+  resultsKey: string,
+  cursor: string | undefined,
+): Promise<{ items: T[]; nextCursor: string | null }> {
+  const sep = basePath.includes('?') ? '&' : '?';
+  const url = cursor ? cursor : `${basePath}${sep}limit=${PER_PAGE}`;
+  // The first page is a relative path; subsequent cursors are absolute URLs.
+  const res = url.startsWith('http')
+    ? await callAbsolute<Record<string, unknown>>(token, url)
+    : await call<Record<string, unknown>>(subdomain, token, url);
+  const batch = (res[resultsKey] as T[]) ?? [];
+  const paging = res.paging as { next?: string } | undefined;
+  return { items: batch, nextCursor: paging?.next ?? null };
+}
+
+// Auto-walks all pages (up to MAX_PAGES) on top of callOnePage.
 async function callPaged<T>(
   subdomain: string,
   token: string,
@@ -42,19 +62,18 @@ async function callPaged<T>(
   resultsKey: string,
 ): Promise<T[]> {
   const all: T[] = [];
-  const sep = basePath.includes('?') ? '&' : '?';
-  let url: string | null = `${basePath}${sep}limit=${PER_PAGE}`;
-  for (let i = 0; i < MAX_PAGES && url; i++) {
-    // First iteration url is a relative path; subsequent iterations the API
-    // returns absolute paging.next URLs, so we use those raw.
-    const fullPath = url.startsWith('http') ? null : url;
-    const res = fullPath
-      ? await call<Record<string, unknown>>(subdomain, token, fullPath)
-      : await callAbsolute<Record<string, unknown>>(token, url);
-    const batch = (res[resultsKey] as T[]) ?? [];
-    all.push(...batch);
-    const paging = res.paging as { next?: string } | undefined;
-    url = paging?.next ?? null;
+  let cursor: string | undefined = '';
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const { items, nextCursor } = await callOnePage<T>(
+      subdomain,
+      token,
+      basePath,
+      resultsKey,
+      cursor,
+    );
+    all.push(...items);
+    if (!nextCursor) break;
+    cursor = nextCursor;
   }
   return all;
 }
@@ -169,58 +188,69 @@ export async function testConnection(subdomain: string, token: string): Promise<
 export async function listRequisitions(
   subdomain: string,
   token: string,
+  cursor?: string,
 ): Promise<NormPage<NormRequisition>> {
   // state=published surfaces active job postings. Workable's full state
   // set includes 'draft', 'archived', 'closed' which we don't source from.
-  const jobs = await callPaged<WorkableJob>(
+  // No cursor → walk all (nextCursor null); a cursor → one page + next URL.
+  const map = (j: WorkableJob): NormRequisition => ({
+    // Workable APIs use the job shortcode as the addressable id — same
+    // value we'd pass to /jobs/:shortcode/candidates.
+    externalId: j.shortcode,
+    title: j.title,
+    department: j.department,
+    location: [j.location?.city, j.location?.country].filter(Boolean).join(', '),
+    raw: j,
+  });
+  if (cursor === undefined) {
+    const jobs = await callPaged<WorkableJob>(subdomain, token, '/jobs?state=published', 'jobs');
+    return { items: jobs.map(map), nextCursor: null };
+  }
+  const { items, nextCursor } = await callOnePage<WorkableJob>(
     subdomain,
     token,
     '/jobs?state=published',
     'jobs',
+    cursor,
   );
-  return {
-    items: jobs.map((j) => ({
-      // Workable APIs use the job shortcode as the addressable id — same
-      // value we'd pass to /jobs/:shortcode/candidates.
-      externalId: j.shortcode,
-      title: j.title,
-      department: j.department,
-      location: [j.location?.city, j.location?.country].filter(Boolean).join(', '),
-      raw: j,
-    })),
-    nextCursor: null,
-  };
+  return { items: items.map(map), nextCursor };
 }
 
 export async function listCandidatesForRequisition(
   subdomain: string,
   token: string,
   jobShortcode: string,
+  cursor?: string,
 ): Promise<NormPage<NormCandidate>> {
   // /jobs/:shortcode/candidates returns candidates for a specific job
-  // already filtered to that posting — no follow-up GET needed.
-  const candidates = await callPaged<WorkableCandidate>(
+  // already filtered to that posting — no follow-up GET needed. No cursor →
+  // walk all (nextCursor null); a cursor → one page + next URL.
+  const path = `/jobs/${encodeURIComponent(jobShortcode)}/candidates`;
+  const map = (c: WorkableCandidate): NormCandidate => ({
+    externalId: c.id,
+    requisitionExternalId: jobShortcode,
+    fullName:
+      c.name ??
+      [c.firstname, c.lastname].filter(Boolean).join(' ').trim() ??
+      `Candidate ${c.id}`,
+    headline: c.headline,
+    location: c.address,
+    resumeUrl: c.resume_url,
+    skills: c.tags,
+    raw: c,
+  });
+  if (cursor === undefined) {
+    const candidates = await callPaged<WorkableCandidate>(subdomain, token, path, 'candidates');
+    return { items: candidates.map(map), nextCursor: null };
+  }
+  const { items, nextCursor } = await callOnePage<WorkableCandidate>(
     subdomain,
     token,
-    `/jobs/${encodeURIComponent(jobShortcode)}/candidates`,
+    path,
     'candidates',
+    cursor,
   );
-  return {
-    items: candidates.map((c) => ({
-      externalId: c.id,
-      requisitionExternalId: jobShortcode,
-      fullName:
-        c.name ??
-        [c.firstname, c.lastname].filter(Boolean).join(' ').trim() ??
-        `Candidate ${c.id}`,
-      headline: c.headline,
-      location: c.address,
-      resumeUrl: c.resume_url,
-      skills: c.tags,
-      raw: c,
-    })),
-    nextCursor: null,
-  };
+  return { items: items.map(map), nextCursor };
 }
 
 export async function listStages(

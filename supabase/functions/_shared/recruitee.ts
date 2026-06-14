@@ -38,9 +38,29 @@ async function call<T>(
   );
 }
 
-// Recruitee pagination: page-based via ?page=N&limit=100. Responses don't
-// always include a "next page" hint, so we walk until a short page or
-// MAX_PAGES.
+// One page of Recruitee's page-based pagination (?page=N&limit=100). Responses
+// carry no "next page" hint, so a full page implies more. The opaque cursor is
+// the page number; '' (or undefined-coerced) means page 1. nextCursor is the
+// next page number, or null when a short page ends the walk.
+async function callOnePage<T>(
+  companyId: string,
+  token: string,
+  basePath: string,
+  resultsKey: string,
+  cursor: string | undefined,
+): Promise<{ items: T[]; nextCursor: string | null }> {
+  const sep = basePath.includes('?') ? '&' : '?';
+  const page = cursor ? Number(cursor) : 1;
+  const res = await call<Record<string, unknown>>(
+    companyId,
+    token,
+    `${basePath}${sep}limit=${PER_PAGE}&page=${page}`,
+  );
+  const batch = (res[resultsKey] as T[]) ?? [];
+  return { items: batch, nextCursor: batch.length < PER_PAGE ? null : String(page + 1) };
+}
+
+// Auto-walks all pages (up to MAX_PAGES) on top of callOnePage.
 async function callPaged<T>(
   companyId: string,
   token: string,
@@ -48,16 +68,18 @@ async function callPaged<T>(
   resultsKey: string,
 ): Promise<T[]> {
   const all: T[] = [];
-  const sep = basePath.includes('?') ? '&' : '?';
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const res = await call<Record<string, unknown>>(
+  let cursor: string | undefined = '';
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const { items, nextCursor } = await callOnePage<T>(
       companyId,
       token,
-      `${basePath}${sep}limit=${PER_PAGE}&page=${page}`,
+      basePath,
+      resultsKey,
+      cursor,
     );
-    const batch = (res[resultsKey] as T[]) ?? [];
-    all.push(...batch);
-    if (batch.length < PER_PAGE) break;
+    all.push(...items);
+    if (!nextCursor) break;
+    cursor = nextCursor;
   }
   return all;
 }
@@ -168,56 +190,65 @@ export async function testConnection(companyId: string, token: string): Promise<
 export async function listRequisitions(
   companyId: string,
   token: string,
+  cursor?: string,
 ): Promise<NormPage<NormRequisition>> {
   // status=published surfaces active job postings. Other Recruitee statuses
-  // (draft, closed, archived, internal) aren't surfaced.
-  const offers = await callPaged<RecruiteeOffer>(
+  // (draft, closed, archived, internal) aren't surfaced. No cursor → walk all
+  // (nextCursor null); a cursor → one page + its next page cursor.
+  const map = (o: RecruiteeOffer): NormRequisition => ({
+    externalId: String(o.id),
+    title: o.title,
+    department: o.department?.name,
+    location: [o.location?.city, o.location?.country_code].filter(Boolean).join(', '),
+    raw: o,
+  });
+  if (cursor === undefined) {
+    const offers = await callPaged<RecruiteeOffer>(companyId, token, '/offers?status=published', 'offers');
+    return { items: offers.map(map), nextCursor: null };
+  }
+  const { items, nextCursor } = await callOnePage<RecruiteeOffer>(
     companyId,
     token,
     '/offers?status=published',
     'offers',
+    cursor,
   );
-  return {
-    items: offers.map((o) => ({
-      externalId: String(o.id),
-      title: o.title,
-      department: o.department?.name,
-      location: [o.location?.city, o.location?.country_code]
-        .filter(Boolean)
-        .join(', '),
-      raw: o,
-    })),
-    nextCursor: null,
-  };
+  return { items: items.map(map), nextCursor };
 }
 
 export async function listCandidatesForRequisition(
   companyId: string,
   token: string,
   offerExternalId: string,
+  cursor?: string,
 ): Promise<NormPage<NormCandidate>> {
   // /offers/:id/candidates returns candidates already filtered to that
-  // offer's placements. No follow-up GETs needed.
-  const candidates = await callPaged<RecruiteeCandidate>(
+  // offer's placements. No follow-up GETs needed. No cursor → walk all
+  // (nextCursor null); a cursor → one page + its next page cursor.
+  const path = `/offers/${encodeURIComponent(offerExternalId)}/candidates`;
+  const map = (c: RecruiteeCandidate): NormCandidate => ({
+    externalId: String(c.id),
+    requisitionExternalId: offerExternalId,
+    fullName: c.name ?? `Candidate ${c.id}`,
+    headline: c.fields?.find((f) => f.kind === 'position')?.values?.[0]?.text,
+    location: c.fields?.find((f) => f.kind === 'location')?.values?.[0]?.text,
+    resumeUrl: c.cv_url,
+    photoUrl: c.photo_thumb_url,
+    skills: c.tags,
+    raw: c,
+  });
+  if (cursor === undefined) {
+    const candidates = await callPaged<RecruiteeCandidate>(companyId, token, path, 'candidates');
+    return { items: candidates.map(map), nextCursor: null };
+  }
+  const { items, nextCursor } = await callOnePage<RecruiteeCandidate>(
     companyId,
     token,
-    `/offers/${encodeURIComponent(offerExternalId)}/candidates`,
+    path,
     'candidates',
+    cursor,
   );
-  return {
-    items: candidates.map((c) => ({
-      externalId: String(c.id),
-      requisitionExternalId: offerExternalId,
-      fullName: c.name ?? `Candidate ${c.id}`,
-      headline: c.fields?.find((f) => f.kind === 'position')?.values?.[0]?.text,
-      location: c.fields?.find((f) => f.kind === 'location')?.values?.[0]?.text,
-      resumeUrl: c.cv_url,
-      photoUrl: c.photo_thumb_url,
-      skills: c.tags,
-      raw: c,
-    })),
-    nextCursor: null,
-  };
+  return { items: items.map(map), nextCursor };
 }
 
 export async function listStages(
