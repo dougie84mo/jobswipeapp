@@ -173,18 +173,21 @@ export default function SwipeDeckScreen() {
                 color="#E5484D"
                 onPress={() => handleSwipe('left')}
                 disabled={swiping}
+                accessibilityLabel={`Pass on ${current.fullName}`}
               />
               <ActionButton
                 label="Boost"
                 color="#F5A524"
                 onPress={() => handleSwipe('up')}
                 disabled={swiping}
+                accessibilityLabel={`Boost ${current.fullName}`}
               />
               <ActionButton
                 label="Save"
                 color="#30A46C"
                 onPress={() => handleSwipe('right')}
                 disabled={swiping}
+                accessibilityLabel={`Save ${current.fullName}`}
               />
             </View>
             {lastOutcome && lastOutcome.length > 0 ? (
@@ -211,8 +214,26 @@ export default function SwipeDeckScreen() {
 }
 
 function CandidateCard({ candidate }: { candidate: Candidate }) {
+  // Group the card into one screen-reader node so it announces the candidate
+  // as a sentence instead of reading each chip / emoji separately.
+  const a11yLabel = [
+    candidate.fullName,
+    candidate.headline,
+    candidate.location ? `Location ${candidate.location}` : null,
+    candidate.yearsExperience !== undefined
+      ? `${Math.round(candidate.yearsExperience)} years experience`
+      : null,
+    candidate.skills?.length ? `Skills: ${candidate.skills.join(', ')}` : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView
+      type="backgroundElement"
+      style={styles.card}
+      accessible
+      accessibilityLabel={a11yLabel}
+    >
       {candidate.photoUrl ? (
         <Image
           source={{ uri: candidate.photoUrl }}
@@ -259,16 +280,21 @@ function ActionButton({
   color,
   onPress,
   disabled,
+  accessibilityLabel,
 }: {
   label: string;
   color: string;
   onPress: () => void;
   disabled?: boolean;
+  accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: Boolean(disabled) }}
       style={({ pressed }) => [
         styles.actionButton,
         { backgroundColor: color },
