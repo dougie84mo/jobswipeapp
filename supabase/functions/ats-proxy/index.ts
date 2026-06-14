@@ -19,7 +19,6 @@
 // is the read_integration_credentials SECURITY DEFINER RPC, which verifies
 // the caller owns the integration before reading vault.decrypted_secrets.
 
-// deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 
 import { HttpError } from '../_shared/http.ts';
@@ -113,7 +112,8 @@ interface IntegrationRow {
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -144,7 +144,10 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'invalid JSON body' }, 400);
   }
   if (!body?.integrationId || !body?.method) {
-    return jsonResponse({ error: 'integrationId and method are required' }, 400);
+    return jsonResponse(
+      { error: 'integrationId and method are required' },
+      400,
+    );
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -165,7 +168,9 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (lookupError) {
-    return jsonResponse({ error: `integration lookup failed: ${lookupError.message}` }, 500);
+    return jsonResponse({
+      error: `integration lookup failed: ${lookupError.message}`,
+    }, 500);
   }
   const integration = integrationRaw as IntegrationRow | null;
   if (!integration) {
@@ -177,7 +182,9 @@ Deno.serve(async (req: Request) => {
     { p_integration_id: body.integrationId },
   );
   if (credsError) {
-    return jsonResponse({ error: `credentials read failed: ${credsError.message}` }, 500);
+    return jsonResponse({
+      error: `credentials read failed: ${credsError.message}`,
+    }, 500);
   }
   if (!apiKey || typeof apiKey !== 'string') {
     return jsonResponse({ error: 'integration credentials are empty' }, 400);
@@ -270,7 +277,10 @@ function str(args: Record<string, unknown>, key: string): string {
   return v;
 }
 
-function strOpt(args: Record<string, unknown>, key: string): string | undefined {
+function strOpt(
+  args: Record<string, unknown>,
+  key: string,
+): string | undefined {
   const v = args[key];
   return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
@@ -298,7 +308,11 @@ async function dispatch(
       case 'listRequisitions':
         return ghListRequisitions(apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
-        return ghListCandidates(apiKey, str(args, 'requisitionExternalId'), cursorArg(args));
+        return ghListCandidates(
+          apiKey,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
       case 'listStages':
         return ghListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
@@ -342,7 +356,11 @@ async function dispatch(
       case 'listRequisitions':
         return ashbyListRequisitions(apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
-        return ashbyListCandidates(apiKey, str(args, 'requisitionExternalId'), cursorArg(args));
+        return ashbyListCandidates(
+          apiKey,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
       case 'listStages':
         return ashbyListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
@@ -380,7 +398,11 @@ async function dispatch(
       case 'listRequisitions':
         return leverListRequisitions(apiKey, cursorArg(args));
       case 'listCandidatesForRequisition':
-        return leverListCandidates(apiKey, str(args, 'requisitionExternalId'), cursorArg(args));
+        return leverListCandidates(
+          apiKey,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
       case 'listStages':
         return leverListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
@@ -414,7 +436,9 @@ async function dispatch(
     }
   }
   if (provider === 'workable') {
-    const subdomain = typeof extras.subdomain === 'string' ? extras.subdomain : '';
+    const subdomain = typeof extras.subdomain === 'string'
+      ? extras.subdomain
+      : '';
     if (!subdomain) {
       throw new Error(
         'Workable integration is missing extras.subdomain. Reconnect and supply your Workable account subdomain.',
@@ -471,8 +495,9 @@ async function dispatch(
     }
   }
   if (provider === 'recruitee') {
-    const companyId =
-      typeof extras.company_id === 'string' ? extras.company_id : '';
+    const companyId = typeof extras.company_id === 'string'
+      ? extras.company_id
+      : '';
     if (!companyId) {
       throw new Error(
         'Recruitee integration is missing extras.company_id. Reconnect and supply your company id.',
@@ -530,5 +555,7 @@ async function dispatch(
         );
     }
   }
-  throw new Error(`ats-proxy: unsupported provider "${provider}" or method "${method}"`);
+  throw new Error(
+    `ats-proxy: unsupported provider "${provider}" or method "${method}"`,
+  );
 }

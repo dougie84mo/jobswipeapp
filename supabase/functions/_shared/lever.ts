@@ -16,7 +16,13 @@
 //   reading current tags and PUT-ing the merged list — Lever replaces
 //   rather than appends.
 
-import { authHeaderBasic, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
+import {
+  authHeaderBasic,
+  callGet,
+  callWrite,
+  MAX_PAGES,
+  PER_PAGE,
+} from './http.ts';
 
 const BASE_URL = 'https://api.lever.co/v1';
 
@@ -26,7 +32,10 @@ interface LeverEnvelope<T> {
   hasNext?: boolean;
 }
 
-async function call<T>(apiKey: string, path: string): Promise<LeverEnvelope<T>> {
+async function call<T>(
+  apiKey: string,
+  path: string,
+): Promise<LeverEnvelope<T>> {
   return callGet<LeverEnvelope<T>>(
     `${BASE_URL}${path}`,
     { Authorization: authHeaderBasic(apiKey), Accept: 'application/json' },
@@ -44,7 +53,10 @@ async function callOnePage<T>(
 ): Promise<{ items: T[]; nextCursor: string | null }> {
   const sep = basePath.includes('?') ? '&' : '?';
   const offsetPart = cursor ? `&offset=${encodeURIComponent(cursor)}` : '';
-  const env = await call<T[]>(apiKey, `${basePath}${sep}limit=${PER_PAGE}${offsetPart}`);
+  const env = await call<T[]>(
+    apiKey,
+    `${basePath}${sep}limit=${PER_PAGE}${offsetPart}`,
+  );
   return {
     items: env.data,
     nextCursor: env.hasNext && env.next ? env.next : null,
@@ -56,7 +68,11 @@ async function callPaged<T>(apiKey: string, basePath: string): Promise<T[]> {
   const all: T[] = [];
   let cursor: string | undefined = '';
   for (let i = 0; i < MAX_PAGES; i++) {
-    const { items, nextCursor } = await callOnePage<T>(apiKey, basePath, cursor);
+    const { items, nextCursor } = await callOnePage<T>(
+      apiKey,
+      basePath,
+      cursor,
+    );
     all.push(...items);
     if (!nextCursor) break;
     cursor = nextCursor;
@@ -188,7 +204,10 @@ export async function listRequisitions(
     raw: p,
   });
   if (cursor === undefined) {
-    const postings = await callPaged<LeverPosting>(apiKey, '/postings?state=published');
+    const postings = await callPaged<LeverPosting>(
+      apiKey,
+      '/postings?state=published',
+    );
     return { items: postings.map(map), nextCursor: null };
   }
   const { items, nextCursor } = await callOnePage<LeverPosting>(
@@ -206,7 +225,9 @@ export async function listCandidatesForRequisition(
 ): Promise<NormPage<NormCandidate>> {
   // expand=contact inlines the candidate's name/headline/location so we don't
   // need a per-opportunity follow-up the way Greenhouse / Ashby do.
-  const path = `/opportunities?posting_id=${encodeURIComponent(postingExternalId)}&expand=contact`;
+  const path = `/opportunities?posting_id=${
+    encodeURIComponent(postingExternalId)
+  }&expand=contact`;
   let opps: LeverOpportunity[];
   let nextCursor: string | null = null;
   if (cursor === undefined) {
@@ -252,12 +273,11 @@ export async function listStages(
     .map((s) => ({
       id: s.id,
       name: s.text,
-      order:
-        s.pipeline === undefined
-          ? undefined
-          : order.indexOf(s.pipeline) === -1
-            ? order.length
-            : order.indexOf(s.pipeline),
+      order: s.pipeline === undefined
+        ? undefined
+        : order.indexOf(s.pipeline) === -1
+        ? order.length
+        : order.indexOf(s.pipeline),
     }))
     .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
 }

@@ -19,7 +19,12 @@ export const greenhouse = {
       offices: [{ id: 9, name: 'HQ', location: { name: 'Remote (US)' } }],
     },
   ],
-  applications: [{ id: 5001, candidate_id: 7001, status: 'active', current_stage: { id: 30, name: 'Screen' } }],
+  applications: [{
+    id: 5001,
+    candidate_id: 7001,
+    status: 'active',
+    current_stage: { id: 30, name: 'Screen' },
+  }],
   candidate: {
     id: 7001,
     first_name: 'Ada',
@@ -43,30 +48,92 @@ export const greenhouse = {
 // nextCursor }, string ids)
 // ============================================================================
 export const ashby = {
-  jobList: { success: true, results: [{ id: 'job_a1', title: 'Product Designer', status: 'Open', department: { id: 'd1', name: 'Design' }, location: { id: 'l1', name: 'NYC' } }] },
+  jobList: {
+    success: true,
+    results: [{
+      id: 'job_a1',
+      title: 'Product Designer',
+      status: 'Open',
+      department: { id: 'd1', name: 'Design' },
+      location: { id: 'l1', name: 'NYC' },
+    }],
+  },
   jobListHasMore: {
     success: true,
     results: [{ id: 'job_a1', title: 'Product Designer', status: 'Open' }],
     moreDataAvailable: true,
     nextCursor: 'CURSOR_2',
   },
-  applicationList: { success: true, results: [{ id: 'app_a1', candidateId: 'cand_a1', jobId: 'job_a1', status: 'Active' }] },
+  applicationList: {
+    success: true,
+    results: [{
+      id: 'app_a1',
+      candidateId: 'cand_a1',
+      jobId: 'job_a1',
+      status: 'Active',
+    }],
+  },
   candidateInfo: {
     success: true,
-    results: { id: 'cand_a1', name: 'Grace Sample', position: 'Designer', company: 'Acme', primaryLocation: { locationSummary: 'NYC' }, tags: [{ id: 't1', title: 'portfolio' }] },
+    results: {
+      id: 'cand_a1',
+      name: 'Grace Sample',
+      position: 'Designer',
+      company: 'Acme',
+      primaryLocation: { locationSummary: 'NYC' },
+      tags: [{ id: 't1', title: 'portfolio' }],
+    },
   },
-  interviewPlan: { success: true, results: { id: 'plan_1', jobId: 'job_a1', interviewStages: [{ id: 'st_1', title: 'Screen', orderInInterviewPlan: 0 }] } },
-  candidateTagList: { success: true, results: [{ id: 'tag_a1', title: 'portfolio' }] },
+  interviewPlan: {
+    success: true,
+    results: {
+      id: 'plan_1',
+      jobId: 'job_a1',
+      interviewStages: [{
+        id: 'st_1',
+        title: 'Screen',
+        orderInInterviewPlan: 0,
+      }],
+    },
+  },
+  candidateTagList: {
+    success: true,
+    results: [{ id: 'tag_a1', title: 'portfolio' }],
+  },
 };
 
 // ============================================================================
 // Lever (GET, envelope { data, next, hasNext }, offset pagination, string ids)
 // ============================================================================
 export const lever = {
-  postings: { data: [{ id: 'post_l1', text: 'Staff SRE', state: 'published', categories: { department: 'Infra', location: 'Remote' } }] },
-  postingsHasNext: { data: [{ id: 'post_l1', text: 'Staff SRE', state: 'published' }], hasNext: true, next: 'OFFSET_2' },
-  opportunities: { data: [{ id: 'opp_l1', contact: { id: 'c_l1', name: 'Lin Sample', headline: 'SRE', location: { name: 'Remote' } }, tags: ['priority'] }] },
-  stages: { data: [{ id: 'stg_l1', text: 'Applicant', pipeline: 'applicant' }] },
+  postings: {
+    data: [{
+      id: 'post_l1',
+      text: 'Staff SRE',
+      state: 'published',
+      categories: { department: 'Infra', location: 'Remote' },
+    }],
+  },
+  postingsHasNext: {
+    data: [{ id: 'post_l1', text: 'Staff SRE', state: 'published' }],
+    hasNext: true,
+    next: 'OFFSET_2',
+  },
+  opportunities: {
+    data: [{
+      id: 'opp_l1',
+      contact: {
+        id: 'c_l1',
+        name: 'Lin Sample',
+        headline: 'SRE',
+        location: { name: 'Remote' },
+      },
+      tags: ['priority'],
+    }],
+  },
+  stages: {
+    data: [{ id: 'stg_l1', text: 'Applicant', pipeline: 'applicant' }],
+  },
   tags: { data: [{ id: 'tg_l1', text: 'priority' }] },
 };
 
@@ -75,9 +142,35 @@ export const lever = {
 // string ids)
 // ============================================================================
 export const workable = {
-  jobs: { jobs: [{ id: 'wj1', shortcode: 'ABC123', title: 'Data Analyst', state: 'published', department: 'Data', location: { city: 'Austin', country: 'US' } }] },
-  jobsHasNext: { jobs: [{ id: 'wj1', shortcode: 'ABC123', title: 'Data Analyst', state: 'published' }], paging: { next: 'https://acme.workable.com/spi/v3/jobs?since_id=wj1' } },
-  candidates: { candidates: [{ id: 'wc1', name: 'Sam Sample', headline: 'Analyst', address: 'Austin, US', tags: ['sql'], resume_url: 'https://files.example.test/w.pdf' }] },
+  jobs: {
+    jobs: [{
+      id: 'wj1',
+      shortcode: 'ABC123',
+      title: 'Data Analyst',
+      state: 'published',
+      department: 'Data',
+      location: { city: 'Austin', country: 'US' },
+    }],
+  },
+  jobsHasNext: {
+    jobs: [{
+      id: 'wj1',
+      shortcode: 'ABC123',
+      title: 'Data Analyst',
+      state: 'published',
+    }],
+    paging: { next: 'https://acme.workable.com/spi/v3/jobs?since_id=wj1' },
+  },
+  candidates: {
+    candidates: [{
+      id: 'wc1',
+      name: 'Sam Sample',
+      headline: 'Analyst',
+      address: 'Austin, US',
+      tags: ['sql'],
+      resume_url: 'https://files.example.test/w.pdf',
+    }],
+  },
   stages: { stages: [{ slug: 'sourced', name: 'Sourced', position: 0 }] },
   tags: { tags: ['sql', 'python'] },
 };
@@ -87,7 +180,16 @@ export const workable = {
 // numeric ids)
 // ============================================================================
 export const recruitee = {
-  offers: { offers: [{ id: 301, title: 'Account Executive', slug: 'ae', status: 'published', department: { name: 'Sales' }, location: { city: 'Denver', country_code: 'US' } }] },
+  offers: {
+    offers: [{
+      id: 301,
+      title: 'Account Executive',
+      slug: 'ae',
+      status: 'published',
+      department: { name: 'Sales' },
+      location: { city: 'Denver', country_code: 'US' },
+    }],
+  },
   candidates: {
     candidates: [{
       id: 9001,
@@ -95,7 +197,10 @@ export const recruitee = {
       emails: ['rev@example.test'],
       photo_thumb_url: 'https://img.example.test/r.png',
       cv_url: 'https://files.example.test/cv.pdf',
-      fields: [{ kind: 'position', values: [{ text: 'AE' }] }, { kind: 'location', values: [{ text: 'Denver' }] }],
+      fields: [{ kind: 'position', values: [{ text: 'AE' }] }, {
+        kind: 'location',
+        values: [{ text: 'Denver' }],
+      }],
       placements: [{ offer_id: 301, stage_id: 50, status: 'active' }],
       tags: ['inbound'],
     }],

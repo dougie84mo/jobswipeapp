@@ -20,11 +20,11 @@ import * as workable from '../workable.ts';
 import * as recruitee from '../recruitee.ts';
 
 import {
-  greenhouse as ghFx,
   ashby as ashbyFx,
+  greenhouse as ghFx,
   lever as leverFx,
-  workable as workableFx,
   recruitee as recruiteeFx,
+  workable as workableFx,
 } from '../__fixtures__/responses.ts';
 
 // ============================================================================
@@ -42,7 +42,9 @@ function installRouter(routes: Route[]): () => void {
   const real = globalThis.fetch;
   // deno-lint-ignore no-explicit-any
   globalThis.fetch = ((input: any, init?: any) => {
-    const url = typeof input === 'string' ? input : (input?.url ?? String(input));
+    const url = typeof input === 'string'
+      ? input
+      : (input?.url ?? String(input));
     const method = (init?.method ?? 'GET').toUpperCase();
     const route = routes.find(
       (r) => (!r.method || r.method === method) && url.includes(r.match),
@@ -63,10 +65,24 @@ function installRouter(routes: Route[]): () => void {
 // ============================================================================
 // Normalized-shape assertions.
 // ============================================================================
-const REQ_KEYS = new Set(['externalId', 'title', 'department', 'location', 'raw']);
+const REQ_KEYS = new Set([
+  'externalId',
+  'title',
+  'department',
+  'location',
+  'raw',
+]);
 const CAND_KEYS = new Set([
-  'externalId', 'requisitionExternalId', 'fullName', 'headline', 'location',
-  'resumeUrl', 'photoUrl', 'skills', 'yearsExperience', 'raw',
+  'externalId',
+  'requisitionExternalId',
+  'fullName',
+  'headline',
+  'location',
+  'resumeUrl',
+  'photoUrl',
+  'skills',
+  'yearsExperience',
+  'raw',
 ]);
 const STAGE_KEYS = new Set(['id', 'name', 'order']);
 const TAG_KEYS = new Set(['id', 'name']);
@@ -89,7 +105,11 @@ function assertPage(page: any): void {
 
 // deno-lint-ignore no-explicit-any
 function assertRequisition(r: any): void {
-  assertEquals(typeof r.externalId, 'string', 'requisition.externalId must be string');
+  assertEquals(
+    typeof r.externalId,
+    'string',
+    'requisition.externalId must be string',
+  );
   assertEquals(typeof r.title, 'string', 'requisition.title must be string');
   assert('raw' in r, 'requisition must retain raw');
   assertOnlyKeys(r, REQ_KEYS, 'requisition');
@@ -97,13 +117,21 @@ function assertRequisition(r: any): void {
 
 // deno-lint-ignore no-explicit-any
 function assertCandidate(c: any): void {
-  assertEquals(typeof c.externalId, 'string', 'candidate.externalId must be string');
+  assertEquals(
+    typeof c.externalId,
+    'string',
+    'candidate.externalId must be string',
+  );
   assertEquals(
     typeof c.requisitionExternalId,
     'string',
     'candidate.requisitionExternalId must be string',
   );
-  assertEquals(typeof c.fullName, 'string', 'candidate.fullName must be string');
+  assertEquals(
+    typeof c.fullName,
+    'string',
+    'candidate.fullName must be string',
+  );
   assert('raw' in c, 'candidate must retain raw');
   assertOnlyKeys(c, CAND_KEYS, 'candidate');
 }
@@ -191,7 +219,10 @@ Deno.test('ashby: reads emit valid normalized shapes', async () => {
 });
 
 Deno.test('ashby: single-page cursor returns the real nextCursor', async () => {
-  const restore = installRouter([{ match: 'job.list', body: ashbyFx.jobListHasMore }]);
+  const restore = installRouter([{
+    match: 'job.list',
+    body: ashbyFx.jobListHasMore,
+  }]);
   try {
     const reqs = await ashby.listRequisitions('k', ''); // '' -> first page only
     assertPage(reqs);
@@ -233,7 +264,10 @@ Deno.test('lever: reads emit valid normalized shapes', async () => {
 });
 
 Deno.test('lever: single-page cursor returns the real next offset', async () => {
-  const restore = installRouter([{ match: '/postings', body: leverFx.postingsHasNext }]);
+  const restore = installRouter([{
+    match: '/postings',
+    body: leverFx.postingsHasNext,
+  }]);
   try {
     const reqs = await lever.listRequisitions('k', '');
     assertEquals(reqs.nextCursor, 'OFFSET_2');
@@ -258,7 +292,11 @@ Deno.test('workable: reads emit valid normalized shapes', async () => {
     assertEquals(reqs.nextCursor, null);
     reqs.items.forEach(assertRequisition);
 
-    const cands = await workable.listCandidatesForRequisition('acme', 't', 'ABC123');
+    const cands = await workable.listCandidatesForRequisition(
+      'acme',
+      't',
+      'ABC123',
+    );
     assertPage(cands);
     cands.items.forEach(assertCandidate);
 
@@ -273,7 +311,10 @@ Deno.test('workable: reads emit valid normalized shapes', async () => {
 });
 
 Deno.test('workable: single-page cursor returns the real next URL', async () => {
-  const restore = installRouter([{ match: 'state=published', body: workableFx.jobsHasNext }]);
+  const restore = installRouter([{
+    match: 'state=published',
+    body: workableFx.jobsHasNext,
+  }]);
   try {
     const reqs = await workable.listRequisitions('acme', 't', '');
     assertEquals(

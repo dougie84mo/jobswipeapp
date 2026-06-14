@@ -50,13 +50,19 @@ async function callEnvelope<T>(
   );
   if (json.success === false) {
     throw new Error(
-      `Ashby ${path} returned success:false${json.errors?.length ? `: ${json.errors.join('; ')}` : ''}`,
+      `Ashby ${path} returned success:false${
+        json.errors?.length ? `: ${json.errors.join('; ')}` : ''
+      }`,
     );
   }
   return json;
 }
 
-async function call<T>(apiKey: string, path: string, body: unknown): Promise<T> {
+async function call<T>(
+  apiKey: string,
+  path: string,
+  body: unknown,
+): Promise<T> {
   const env = await callEnvelope<T>(apiKey, path, body);
   return env.results as T;
 }
@@ -87,7 +93,12 @@ async function callPaged<T>(
   const all: T[] = [];
   let cursor: string | undefined = '';
   for (let i = 0; i < MAX_PAGES; i++) {
-    const { items, nextCursor } = await callOnePage<T>(apiKey, path, baseBody, cursor);
+    const { items, nextCursor } = await callOnePage<T>(
+      apiKey,
+      path,
+      baseBody,
+      cursor,
+    );
     all.push(...items);
     if (!nextCursor) break;
     cursor = nextCursor;
@@ -234,7 +245,11 @@ export async function listCandidatesForRequisition(
   let apps: AshbyApplication[];
   let nextCursor: string | null = null;
   if (cursor === undefined) {
-    apps = await callPaged<AshbyApplication>(apiKey, '/application.list', baseBody);
+    apps = await callPaged<AshbyApplication>(
+      apiKey,
+      '/application.list',
+      baseBody,
+    );
   } else {
     const page = await callOnePage<AshbyApplication>(
       apiKey,
@@ -259,7 +274,7 @@ export async function listCandidatesForRequisition(
         headline: headlineParts.join(' • ') || undefined,
         location: c.primaryLocation?.locationSummary ?? c.primaryLocation?.name,
         resumeUrl: undefined, // resumeFileHandle is opaque; needs file.info to resolve
-        photoUrl: undefined,  // Ashby doesn't expose candidate photos
+        photoUrl: undefined, // Ashby doesn't expose candidate photos
         skills: c.tags?.map((t) => t.title),
         raw: c,
       } satisfies NormCandidate;
@@ -275,9 +290,13 @@ export async function listStages(
   // Ashby couples stages to an interview plan, not the job directly.
   // jobInterviewPlan.info(jobId) returns the plan, which embeds the stages
   // — saves a second hop to interviewStage.list.
-  const plan = await call<AshbyInterviewPlan>(apiKey, '/jobInterviewPlan.info', {
-    jobId: jobExternalId,
-  });
+  const plan = await call<AshbyInterviewPlan>(
+    apiKey,
+    '/jobInterviewPlan.info',
+    {
+      jobId: jobExternalId,
+    },
+  );
   return (plan.interviewStages ?? []).map((s) => ({
     id: s.id,
     name: s.title,

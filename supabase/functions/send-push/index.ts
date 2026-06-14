@@ -26,7 +26,6 @@
 // the project moves to a dev client, registered tokens light up and this
 // function starts delivering.
 
-// deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 
 interface RequestBody {
@@ -46,7 +45,8 @@ interface ExpoPushMessage {
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -104,10 +104,17 @@ Deno.serve(async (req: Request) => {
     .eq('user_id', body.user_id)
     .maybeSingle();
   if (profileError) {
-    return jsonResponse({ error: `profile lookup failed: ${profileError.message}` }, 500);
+    return jsonResponse({
+      error: `profile lookup failed: ${profileError.message}`,
+    }, 500);
   }
   if (profile && profile.notification_prefs?.push_enabled === false) {
-    return jsonResponse({ sent: 0, skipped: 0, errors: [], reason: 'opted-out' });
+    return jsonResponse({
+      sent: 0,
+      skipped: 0,
+      errors: [],
+      reason: 'opted-out',
+    });
   }
 
   const { data: tokens, error: tokensError } = await supabase
@@ -115,7 +122,9 @@ Deno.serve(async (req: Request) => {
     .select('expo_push_token')
     .eq('user_id', body.user_id);
   if (tokensError) {
-    return jsonResponse({ error: `token lookup failed: ${tokensError.message}` }, 500);
+    return jsonResponse({
+      error: `token lookup failed: ${tokensError.message}`,
+    }, 500);
   }
   const messages: ExpoPushMessage[] = (tokens ?? []).map((t) => ({
     to: t.expo_push_token,
@@ -125,7 +134,12 @@ Deno.serve(async (req: Request) => {
     sound: 'default',
   }));
   if (messages.length === 0) {
-    return jsonResponse({ sent: 0, skipped: 0, errors: [], reason: 'no-tokens' });
+    return jsonResponse({
+      sent: 0,
+      skipped: 0,
+      errors: [],
+      reason: 'no-tokens',
+    });
   }
 
   const errors: string[] = [];
@@ -146,7 +160,9 @@ Deno.serve(async (req: Request) => {
       // Expo returns { data: [{ status: 'ok' | 'error', ... }, ...] }.
       // We don't fail the whole call on per-token errors but surface them
       // for the caller to log.
-      const json = (await res.json()) as { data?: { status: string; message?: string }[] };
+      const json = (await res.json()) as {
+        data?: { status: string; message?: string }[];
+      };
       for (const r of json.data ?? []) {
         if (r.status !== 'ok' && r.message) errors.push(r.message);
       }

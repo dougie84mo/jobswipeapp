@@ -44,7 +44,12 @@ export class HttpError extends Error {
   readonly provider: string;
   readonly route: string;
 
-  constructor(provider: string, route: string, status: number, statusText: string) {
+  constructor(
+    provider: string,
+    route: string,
+    status: number,
+    statusText: string,
+  ) {
     super(`${provider} ${status} ${statusText} for ${route}`);
     this.name = 'HttpError';
     this.status = status;
@@ -90,7 +95,11 @@ export async function fetchWithBackoff(
 }
 
 /** Throw an HttpError on a non-ok response, draining the body first. */
-async function ensureOk(res: Response, provider: string, route: string): Promise<void> {
+async function ensureOk(
+  res: Response,
+  provider: string,
+  route: string,
+): Promise<void> {
   if (res.ok) return;
   // Drain (don't read) the body: it can contain PII, and cancelling frees the
   // connection. The status alone drives both diagnosis and retry decisions.
@@ -104,7 +113,11 @@ export async function callGet<T>(
   headers: Record<string, string>,
   ctx: CallCtx,
 ): Promise<T> {
-  const res = await fetchWithBackoff(url, { method: 'GET', headers }, ctx.maxRetries);
+  const res = await fetchWithBackoff(
+    url,
+    { method: 'GET', headers },
+    ctx.maxRetries,
+  );
   await ensureOk(res, ctx.provider, ctx.route);
   return (await res.json()) as T;
 }
@@ -122,7 +135,11 @@ export async function callWrite<T>(
 ): Promise<T> {
   const res = await fetchWithBackoff(
     url,
-    { method, headers, body: body === undefined ? undefined : JSON.stringify(body) },
+    {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
     ctx.maxRetries,
   );
   // Mirror the old per-client format (`Provider <status> ... for POST /path`).

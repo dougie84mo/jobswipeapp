@@ -15,7 +15,13 @@
 // to MAX_PAGES; the proxy returns a single combined array so the UI
 // doesn't need a cursor surface yet.
 
-import { authHeaderBasic, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
+import {
+  authHeaderBasic,
+  callGet,
+  callWrite,
+  MAX_PAGES,
+  PER_PAGE,
+} from './http.ts';
 
 const BASE_URL = 'https://harvest.greenhouse.io/v1';
 
@@ -41,7 +47,10 @@ async function callOnePage<T>(
     apiKey,
     `${basePath}${sep}per_page=${PER_PAGE}&page=${page}`,
   );
-  return { items, nextCursor: items.length < PER_PAGE ? null : String(page + 1) };
+  return {
+    items,
+    nextCursor: items.length < PER_PAGE ? null : String(page + 1),
+  };
 }
 
 // Auto-walks all pages (up to MAX_PAGES) on top of callOnePage so the walk and
@@ -50,7 +59,11 @@ async function callPaged<T>(apiKey: string, basePath: string): Promise<T[]> {
   const all: T[] = [];
   let cursor: string | undefined = '';
   for (let i = 0; i < MAX_PAGES; i++) {
-    const { items, nextCursor } = await callOnePage<T>(apiKey, basePath, cursor);
+    const { items, nextCursor } = await callOnePage<T>(
+      apiKey,
+      basePath,
+      cursor,
+    );
     all.push(...items);
     if (!nextCursor) break;
     cursor = nextCursor;
@@ -89,7 +102,9 @@ async function findActiveApplication(
 ): Promise<{ applicationId: string; currentStageId: string | null }> {
   const apps = await call<GhApplication[]>(
     apiKey,
-    `/applications?candidate_id=${encodeURIComponent(candidateId)}&job_id=${encodeURIComponent(jobId)}&status=active&per_page=10`,
+    `/applications?candidate_id=${encodeURIComponent(candidateId)}&job_id=${
+      encodeURIComponent(jobId)
+    }&status=active&per_page=10`,
   );
   if (apps.length === 0) {
     throw new Error(
@@ -232,7 +247,9 @@ export async function listCandidatesForRequisition(
   //
   // Pagination is driven by the applications page; no cursor → walk all
   // (nextCursor null), a cursor → one page of applications + its next cursor.
-  const appsPath = `/applications?job_id=${encodeURIComponent(jobExternalId)}&status=active`;
+  const appsPath = `/applications?job_id=${
+    encodeURIComponent(jobExternalId)
+  }&status=active`;
   let apps: GhApplication[];
   let nextCursor: string | null = null;
   if (cursor === undefined) {
@@ -244,11 +261,16 @@ export async function listCandidatesForRequisition(
   }
   const candidates = await Promise.all(
     apps.map(async (app) => {
-      const c = await call<GhCandidate>(apiKey, `/candidates/${app.candidate_id}`);
-      const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ').trim();
+      const c = await call<GhCandidate>(
+        apiKey,
+        `/candidates/${app.candidate_id}`,
+      );
+      const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ')
+        .trim();
       const headlineParts = [c.title, c.company].filter(Boolean);
       const resume = c.attachments?.find(
-        (a) => a.type === 'resume' || a.type === 'Resume' || /resume/i.test(a.url),
+        (a) =>
+          a.type === 'resume' || a.type === 'Resume' || /resume/i.test(a.url),
       );
       return {
         externalId: String(c.id),
@@ -321,7 +343,11 @@ export async function rejectApplication(
   jobId: string,
   reasonId: string | undefined,
 ): Promise<void> {
-  const { applicationId } = await findActiveApplication(apiKey, candidateId, jobId);
+  const { applicationId } = await findActiveApplication(
+    apiKey,
+    candidateId,
+    jobId,
+  );
   const body: Record<string, unknown> = {};
   if (reasonId) body.rejection_reason_id = Number(reasonId);
   await write<unknown>(

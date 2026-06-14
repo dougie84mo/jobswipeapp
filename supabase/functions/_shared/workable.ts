@@ -14,7 +14,13 @@
 // Rate limit: 5 requests/second per subdomain. 429 with Retry-After
 // honored by fetchWithBackoff.
 
-import { authHeaderBearer, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
+import {
+  authHeaderBearer,
+  callGet,
+  callWrite,
+  MAX_PAGES,
+  PER_PAGE,
+} from './http.ts';
 
 function baseUrl(subdomain: string): string {
   return `https://${subdomain}.workable.com/spi/v3`;
@@ -178,7 +184,10 @@ interface WorkableStage {
 // Public methods.
 // ============================================================================
 
-export async function testConnection(subdomain: string, token: string): Promise<boolean> {
+export async function testConnection(
+  subdomain: string,
+  token: string,
+): Promise<boolean> {
   // /accounts is the lightest authenticated endpoint — confirms both the
   // token and the subdomain resolve.
   await call<unknown>(subdomain, token, '/accounts');
@@ -199,11 +208,18 @@ export async function listRequisitions(
     externalId: j.shortcode,
     title: j.title,
     department: j.department,
-    location: [j.location?.city, j.location?.country].filter(Boolean).join(', '),
+    location: [j.location?.city, j.location?.country].filter(Boolean).join(
+      ', ',
+    ),
     raw: j,
   });
   if (cursor === undefined) {
-    const jobs = await callPaged<WorkableJob>(subdomain, token, '/jobs?state=published', 'jobs');
+    const jobs = await callPaged<WorkableJob>(
+      subdomain,
+      token,
+      '/jobs?state=published',
+      'jobs',
+    );
     return { items: jobs.map(map), nextCursor: null };
   }
   const { items, nextCursor } = await callOnePage<WorkableJob>(
@@ -229,8 +245,7 @@ export async function listCandidatesForRequisition(
   const map = (c: WorkableCandidate): NormCandidate => ({
     externalId: c.id,
     requisitionExternalId: jobShortcode,
-    fullName:
-      c.name ??
+    fullName: c.name ??
       [c.firstname, c.lastname].filter(Boolean).join(' ').trim() ??
       `Candidate ${c.id}`,
     headline: c.headline,
@@ -240,7 +255,12 @@ export async function listCandidatesForRequisition(
     raw: c,
   });
   if (cursor === undefined) {
-    const candidates = await callPaged<WorkableCandidate>(subdomain, token, path, 'candidates');
+    const candidates = await callPaged<WorkableCandidate>(
+      subdomain,
+      token,
+      path,
+      'candidates',
+    );
     return { items: candidates.map(map), nextCursor: null };
   }
   const { items, nextCursor } = await callOnePage<WorkableCandidate>(
@@ -260,7 +280,11 @@ export async function listStages(
 ): Promise<NormStage[]> {
   // Workable stages are global to the account, not per-job. Same posture
   // as Lever — listStages ignores the requisitionExternalId arg.
-  const res = await call<{ stages: WorkableStage[] }>(subdomain, token, '/stages');
+  const res = await call<{ stages: WorkableStage[] }>(
+    subdomain,
+    token,
+    '/stages',
+  );
   return res.stages.map((s) => ({
     id: s.slug,
     name: s.name,
@@ -289,9 +313,15 @@ export async function moveStage(
   candidateId: string,
   toStageSlug: string,
 ): Promise<void> {
-  await write<unknown>(subdomain, token, 'POST', `/candidates/${candidateId}/move`, {
-    target_stage: toStageSlug,
-  });
+  await write<unknown>(
+    subdomain,
+    token,
+    'POST',
+    `/candidates/${candidateId}/move`,
+    {
+      target_stage: toStageSlug,
+    },
+  );
 }
 
 export async function disqualifyCandidate(
@@ -344,7 +374,13 @@ export async function setCandidateTags(
   );
   const existing = current.tags ?? [];
   if (existing.includes(tag)) return;
-  await write<unknown>(subdomain, token, 'PUT', `/candidates/${candidateId}/tags`, {
-    tags: [...existing, tag],
-  });
+  await write<unknown>(
+    subdomain,
+    token,
+    'PUT',
+    `/candidates/${candidateId}/tags`,
+    {
+      tags: [...existing, tag],
+    },
+  );
 }

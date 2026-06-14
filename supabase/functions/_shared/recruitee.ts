@@ -20,7 +20,13 @@
 //                                                      that fits the
 //                                                      action descriptor)
 
-import { authHeaderBearer, callGet, callWrite, MAX_PAGES, PER_PAGE } from './http.ts';
+import {
+  authHeaderBearer,
+  callGet,
+  callWrite,
+  MAX_PAGES,
+  PER_PAGE,
+} from './http.ts';
 
 function baseUrl(companyId: string): string {
   return `https://api.recruitee.com/c/${companyId}`;
@@ -57,7 +63,10 @@ async function callOnePage<T>(
     `${basePath}${sep}limit=${PER_PAGE}&page=${page}`,
   );
   const batch = (res[resultsKey] as T[]) ?? [];
-  return { items: batch, nextCursor: batch.length < PER_PAGE ? null : String(page + 1) };
+  return {
+    items: batch,
+    nextCursor: batch.length < PER_PAGE ? null : String(page + 1),
+  };
 }
 
 // Auto-walks all pages (up to MAX_PAGES) on top of callOnePage.
@@ -180,7 +189,10 @@ interface RecruiteeTag {
 // Public methods.
 // ============================================================================
 
-export async function testConnection(companyId: string, token: string): Promise<boolean> {
+export async function testConnection(
+  companyId: string,
+  token: string,
+): Promise<boolean> {
   // /current_user is the lightest authenticated read and confirms the token
   // belongs to a user in the given company.
   await call<unknown>(companyId, token, '/current_user');
@@ -199,11 +211,18 @@ export async function listRequisitions(
     externalId: String(o.id),
     title: o.title,
     department: o.department?.name,
-    location: [o.location?.city, o.location?.country_code].filter(Boolean).join(', '),
+    location: [o.location?.city, o.location?.country_code].filter(Boolean).join(
+      ', ',
+    ),
     raw: o,
   });
   if (cursor === undefined) {
-    const offers = await callPaged<RecruiteeOffer>(companyId, token, '/offers?status=published', 'offers');
+    const offers = await callPaged<RecruiteeOffer>(
+      companyId,
+      token,
+      '/offers?status=published',
+      'offers',
+    );
     return { items: offers.map(map), nextCursor: null };
   }
   const { items, nextCursor } = await callOnePage<RecruiteeOffer>(
@@ -238,7 +257,12 @@ export async function listCandidatesForRequisition(
     raw: c,
   });
   if (cursor === undefined) {
-    const candidates = await callPaged<RecruiteeCandidate>(companyId, token, path, 'candidates');
+    const candidates = await callPaged<RecruiteeCandidate>(
+      companyId,
+      token,
+      path,
+      'candidates',
+    );
     return { items: candidates.map(map), nextCursor: null };
   }
   const { items, nextCursor } = await callOnePage<RecruiteeCandidate>(
@@ -310,7 +334,9 @@ export async function moveStage(
     companyId,
     token,
     'PATCH',
-    `/candidates/${candidateId}/placements/${(placement as { id?: number }).id}`,
+    `/candidates/${candidateId}/placements/${
+      (placement as { id?: number }).id
+    }`,
     { stage_id: Number(toStageId) },
   );
 }
@@ -341,7 +367,9 @@ export async function disqualifyCandidate(
     companyId,
     token,
     'PATCH',
-    `/candidates/${candidateId}/placements/${(placement as { id?: number }).id}`,
+    `/candidates/${candidateId}/placements/${
+      (placement as { id?: number }).id
+    }`,
     body,
   );
 }

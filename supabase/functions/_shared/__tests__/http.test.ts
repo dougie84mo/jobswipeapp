@@ -104,7 +104,11 @@ Deno.test('fetchWithBackoff caps retries and lets the final 429 flow through', a
     new Response(null, { status: 429, headers: { 'Retry-After': '1' } })
   );
   try {
-    const res = await fetchWithBackoff('https://x.test/a', { method: 'GET' }, 2);
+    const res = await fetchWithBackoff(
+      'https://x.test/a',
+      { method: 'GET' },
+      2,
+    );
     assertEquals(res.status, 429);
     // 2 attempts inside the loop + 1 final pass-through fetch.
     assertEquals(h.calls, 3);
@@ -118,7 +122,9 @@ Deno.test('missing Retry-After defaults to a 1s sleep', async () => {
   let n = 0;
   const h = installFetch(() => {
     n++;
-    return n === 1 ? new Response(null, { status: 429 }) : jsonResponse({ ok: true });
+    return n === 1
+      ? new Response(null, { status: 429 })
+      : jsonResponse({ ok: true });
   });
   try {
     await fetchWithBackoff('https://x.test/a', { method: 'GET' });
@@ -148,19 +154,31 @@ Deno.test('callGet parses JSON on success', async () => {
 Deno.test('callGet throws HttpError carrying status, never the body', async () => {
   const h = installFetch(() =>
     // Body would leak PII in a real ATS 4xx — assert it never reaches the error.
-    new Response(JSON.stringify({ email: 'leaked@example.com' }), { status: 422 })
+    new Response(JSON.stringify({ email: 'leaked@example.com' }), {
+      status: 422,
+    })
   );
   try {
     const err = await assertRejects(
-      () => callGet('https://x.test/candidates/1', {}, { provider: 'Greenhouse', route: '/candidates/1' }),
+      () =>
+        callGet('https://x.test/candidates/1', {}, {
+          provider: 'Greenhouse',
+          route: '/candidates/1',
+        }),
       HttpError,
     );
     assertInstanceOf(err, HttpError);
     assertEquals(err.status, 422);
     assertEquals(err.provider, 'Greenhouse');
     assertStringIncludes(err.message, '422');
-    assert(!err.message.includes('leaked@example.com'), 'error message must not include the response body');
-    assert(!err.context.includes('leaked@example.com'), 'error context must not include the response body');
+    assert(
+      !err.message.includes('leaked@example.com'),
+      'error message must not include the response body',
+    );
+    assert(
+      !err.context.includes('leaked@example.com'),
+      'error context must not include the response body',
+    );
   } finally {
     h.restore();
   }
@@ -183,7 +201,11 @@ Deno.test('callWrite includes the method in the error route', async () => {
   const h = installFetch(() => new Response(null, { status: 500 }));
   try {
     const err = await assertRejects(
-      () => callWrite('https://x.test/a', 'PATCH', {}, {}, { provider: 'Recruitee', route: '/a' }),
+      () =>
+        callWrite('https://x.test/a', 'PATCH', {}, {}, {
+          provider: 'Recruitee',
+          route: '/a',
+        }),
       HttpError,
     );
     assertInstanceOf(err, HttpError);

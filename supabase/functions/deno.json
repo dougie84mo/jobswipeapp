@@ -1,0 +1,13 @@
+{
+  "fmt": {
+    "singleQuote": true
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "no-import-prefix",
+        "require-await"
+      ]
+    }
+  }
+}

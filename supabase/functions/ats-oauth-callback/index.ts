@@ -7,12 +7,11 @@
 //
 // Wire-up happens in phase 4-5 (per-provider OAuth in the Greenhouse/Lever PRs).
 
-// deno-lint-ignore-file no-unused-vars
-import { serve } from "https://deno.land/std@0.220.0/http/server.ts";
+import { serve } from 'https://deno.land/std@0.220.0/http/server.ts';
 
 serve((_req: Request) => {
   return new Response(
-    JSON.stringify({ error: "ats-oauth-callback not yet implemented" }),
-    { status: 501, headers: { "Content-Type": "application/json" } },
+    JSON.stringify({ error: 'ats-oauth-callback not yet implemented' }),
+    { status: 501, headers: { 'Content-Type': 'application/json' } },
   );
 });
