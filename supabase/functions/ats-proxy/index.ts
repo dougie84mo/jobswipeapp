@@ -22,6 +22,8 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 
+import { HttpError } from '../_shared/http.ts';
+
 import {
   addCandidateNote as ghAddNote,
   advanceStage as ghAdvanceStage,
@@ -195,6 +197,12 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // 'direct' until the Merge routing tier (P3) makes this route-aware.
+  const route = 'direct';
+  const startedAt = performance.now();
+  let ok = false;
+  let status: number | null = null;
+  let errorContext: string | null = null;
   try {
     const result = await dispatch(
       integration.provider,
@@ -204,12 +212,49 @@ Deno.serve(async (req: Request) => {
       integration.extras ?? {},
       body.args ?? {},
     );
+    ok = true;
+    status = 200;
     return jsonResponse({ data: result });
   } catch (err) {
+    // HttpError.context is PII-free by construction (provider + route +
+    // status, never the body). Other errors may embed candidate/job ids in
+    // their message, so we only echo those back to the owning recruiter — we
+    // never write them to the log line below.
+    if (err instanceof HttpError) {
+      status = err.status;
+      errorContext = err.context;
+    }
     const message = err instanceof Error ? err.message : 'Unknown error';
     return jsonResponse({ error: message }, 502);
+  } finally {
+    logRequest({
+      integrationId: body.integrationId,
+      provider: integration.provider,
+      method: body.method,
+      route,
+      durationMs: Math.round(performance.now() - startedAt),
+      ok,
+      status,
+      ...(errorContext ? { errorContext } : {}),
+    });
   }
 });
+
+// One greppable JSON object per dispatched request. Deliberately carries no
+// credential, no args values, and no candidate PII — only the fields needed to
+// trace latency and failures.
+function logRequest(entry: {
+  integrationId: string;
+  provider: string;
+  method: string;
+  route: string;
+  durationMs: number;
+  ok: boolean;
+  status: number | null;
+  errorContext?: string;
+}): void {
+  console.log(JSON.stringify({ at: 'ats-proxy', ...entry }));
+}
 
 function providerRequiresOnBehalfOf(provider: string): boolean {
   // Greenhouse attributes every write to a Greenhouse user via On-Behalf-Of.
