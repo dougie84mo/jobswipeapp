@@ -259,3 +259,43 @@ export const teamtailor = {
     links: { next: null },
   },
 };
+
+// ============================================================================
+// Manatal (DRF { count, next, previous, results }, numeric ids). Candidate is
+// embedded on the match; the normalized candidate is keyed by the match id.
+// ============================================================================
+export const manatal = {
+  jobs: {
+    count: 1,
+    next: null,
+    previous: null,
+    results: [{
+      id: 701,
+      position_name: 'Sales Lead',
+      status: 'open',
+      address: 'Remote',
+    }],
+  },
+  jobsHasNext: {
+    count: 2,
+    next: 'https://api.manatal.com/open/v3/jobs/?status=open&page=2',
+    previous: null,
+    results: [{ id: 701, position_name: 'Sales Lead', status: 'open' }],
+  },
+  matches: {
+    count: 1,
+    next: null,
+    previous: null,
+    results: [{
+      id: 5001,
+      candidate: { id: 9001, full_name: 'Manny Sample' },
+      stage: { name: 'Screening' },
+    }],
+  },
+  matchStages: {
+    count: 1,
+    next: null,
+    previous: null,
+    results: [{ id: 11, name: 'Screening', rank: 1 }],
+  },
+};

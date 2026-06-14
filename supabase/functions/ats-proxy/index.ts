@@ -86,6 +86,13 @@ import {
   rejectApplication as ttReject,
   testConnection as ttTestConnection,
 } from '../_shared/teamtailor.ts';
+import {
+  listCandidatesForRequisition as manatalListCandidates,
+  listRequisitions as manatalListRequisitions,
+  listStages as manatalListStages,
+  listTags as manatalListTags,
+  testConnection as manatalTestConnection,
+} from '../_shared/manatal.ts';
 
 type Method =
   | 'testConnection'
@@ -593,6 +600,26 @@ async function dispatch(
           str(args, 'candidateExternalId'),
           strOpt(args, 'reasonId'),
         );
+    }
+  }
+  if (provider === 'manatal') {
+    // Reads only — writes are deferred (see _shared/manatal.ts); the shell's
+    // capabilities() report every write as false so none are dispatched here.
+    switch (method) {
+      case 'testConnection':
+        return manatalTestConnection(apiKey);
+      case 'listRequisitions':
+        return manatalListRequisitions(apiKey, cursorArg(args));
+      case 'listCandidatesForRequisition':
+        return manatalListCandidates(
+          apiKey,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
+      case 'listStages':
+        return manatalListStages(apiKey, str(args, 'requisitionExternalId'));
+      case 'listTags':
+        return manatalListTags(apiKey);
     }
   }
   throw new Error(

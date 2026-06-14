@@ -34,6 +34,7 @@ const CONNECTABLE_PROVIDERS: ProviderId[] = [
   'workable',
   'recruitee',
   'teamtailor',
+  'manatal',
 ];
 
 interface ProviderMeta {
@@ -160,9 +161,12 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   },
   manatal: {
     name: 'Manatal',
-    subtitle: 'Manatal Open API v3 • Token auth',
-    ready: false,
+    subtitle: 'Manatal Open API v3 • Token auth • sourcing (read-only)',
+    ready: true,
     authType: 'api_key',
+    apiKeyLabel: 'Manatal API token',
+    apiKeyHint:
+      'Admin → API (Enterprise Plus plan). Read-only for now: candidates flow into the deck and swipes record locally; write-back actions are coming once verified.',
   },
   indeed: {
     name: 'Indeed',

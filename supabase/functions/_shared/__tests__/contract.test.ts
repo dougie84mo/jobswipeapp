@@ -19,11 +19,13 @@ import * as lever from '../lever.ts';
 import * as workable from '../workable.ts';
 import * as recruitee from '../recruitee.ts';
 import * as teamtailor from '../teamtailor.ts';
+import * as manatal from '../manatal.ts';
 
 import {
   ashby as ashbyFx,
   greenhouse as ghFx,
   lever as leverFx,
+  manatal as manatalFx,
   recruitee as recruiteeFx,
   teamtailor as ttFx,
   workable as workableFx,
@@ -406,6 +408,55 @@ Deno.test('teamtailor: single-page cursor returns the links.next URL', async () 
     assertEquals(
       reqs.nextCursor,
       'https://api.teamtailor.com/v1/jobs?page[number]=2',
+    );
+  } finally {
+    restore();
+  }
+});
+
+// ============================================================================
+// Manatal (DRF pagination; candidate externalId IS the match id; reads-only)
+// ============================================================================
+Deno.test('manatal: reads emit valid normalized shapes', async () => {
+  const restore = installRouter([
+    { match: '/matches/', body: manatalFx.matches },
+    { match: 'match-stages', body: manatalFx.matchStages },
+    { match: 'status=open', body: manatalFx.jobs },
+  ]);
+  try {
+    const reqs = await manatal.listRequisitions('k');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, null);
+    reqs.items.forEach(assertRequisition);
+    assertEquals(reqs.items[0]!.externalId, '701'); // numeric -> string
+
+    const cands = await manatal.listCandidatesForRequisition('k', '701');
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    // externalId is the match id, not the candidate id.
+    assertEquals(cands.items[0]!.externalId, '5001');
+    assertEquals(cands.items[0]!.fullName, 'Manny Sample');
+
+    const stages = await manatal.listStages('k', '701');
+    stages.forEach(assertStage);
+    assertEquals(stages[0]!.id, '11');
+
+    const tags = await manatal.listTags('k');
+    assertEquals(tags.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('manatal: single-page cursor returns the DRF next URL', async () => {
+  const restore = installRouter([
+    { match: 'status=open', body: manatalFx.jobsHasNext },
+  ]);
+  try {
+    const reqs = await manatal.listRequisitions('k', '');
+    assertEquals(
+      reqs.nextCursor,
+      'https://api.manatal.com/open/v3/jobs/?status=open&page=2',
     );
   } finally {
     restore();
