@@ -12,6 +12,7 @@ import {
   type IntegrationRow,
 } from '@/features/integrations/queries';
 import { sourceKindFor, type ProviderId, type SourceKind } from '@/ats/types';
+import { displayNameFor } from '@/ats/client';
 
 const KIND_LABEL: Record<SourceKind, string> = {
   ats: 'Applicant Tracking Systems',
@@ -112,7 +113,7 @@ function IntegrationCard({
       <ThemedView type="backgroundElement" style={styles.card}>
         <View style={styles.cardRow}>
           <ThemedText type="smallBold">
-            {item.display_label ?? providerLabel(item.provider)}
+            {item.display_label ?? displayNameFor(item.provider as ProviderId)}
           </ThemedText>
           <View style={styles.kindPill}>
             <ThemedText type="small">
@@ -121,35 +122,12 @@ function IntegrationCard({
           </View>
         </View>
         <ThemedText type="small" themeColor="textSecondary">
-          {providerLabel(item.provider)} • {item.status} • connected{' '}
+          {displayNameFor(item.provider as ProviderId)} • {item.status} • connected{' '}
           {connectedAt.toLocaleDateString()}
         </ThemedText>
       </ThemedView>
     </Pressable>
   );
-}
-
-function providerLabel(provider: string): string {
-  switch (provider) {
-    case 'mock':
-      return 'Mock ATS';
-    case 'greenhouse':
-      return 'Greenhouse';
-    case 'ashby':
-      return 'Ashby';
-    case 'lever':
-      return 'Lever';
-    case 'workable':
-      return 'Workable';
-    case 'recruitee':
-      return 'Recruitee';
-    case 'indeed':
-      return 'Indeed';
-    case 'ziprecruiter':
-      return 'ZipRecruiter';
-    default:
-      return provider;
-  }
 }
 
 function toMessage(err: unknown): string {

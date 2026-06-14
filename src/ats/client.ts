@@ -8,7 +8,7 @@
 // a pure function of the adapter shape, not credentials.
 
 import { bootstrapAdapters } from './bootstrap';
-import { getAdapter } from './registry';
+import { getAdapter, hasAdapter } from './registry';
 import type {
   AddNoteInput,
   AddTagInput,
@@ -125,6 +125,13 @@ export async function listTags(integration: IntegrationRef): Promise<Tag[]> {
 
 export function capabilitiesFor(provider: ProviderId): AtsCapabilities {
   return getAdapter(provider).capabilities();
+}
+
+// Single source of truth for a provider's human-readable name (the adapter
+// registry). Falls back to the raw id if a provider isn't registered (e.g. a
+// stale value from the DB), so the UI never crashes on an unknown provider.
+export function displayNameFor(provider: ProviderId): string {
+  return hasAdapter(provider) ? getAdapter(provider).displayName : provider;
 }
 
 // ============================================================================
