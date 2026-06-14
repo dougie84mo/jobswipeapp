@@ -4,6 +4,9 @@ yarn.lock
 .pnp/
 .pnp.js
 .npm
+# Root package-lock.json IS tracked (CI needs it). These are not:
+/deno.lock
+legacy/**/package-lock.json
 
 # Expo
 .expo/
