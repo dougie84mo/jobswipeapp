@@ -18,12 +18,14 @@ import * as ashby from '../ashby.ts';
 import * as lever from '../lever.ts';
 import * as workable from '../workable.ts';
 import * as recruitee from '../recruitee.ts';
+import * as teamtailor from '../teamtailor.ts';
 
 import {
   ashby as ashbyFx,
   greenhouse as ghFx,
   lever as leverFx,
   recruitee as recruiteeFx,
+  teamtailor as ttFx,
   workable as workableFx,
 } from '../__fixtures__/responses.ts';
 
@@ -355,6 +357,56 @@ Deno.test('recruitee: reads emit valid normalized shapes', async () => {
     const tags = await recruitee.listTags('c', 't');
     tags.forEach(assertTag);
     assertEquals(tags[0]!.id, '400');
+  } finally {
+    restore();
+  }
+});
+
+// ============================================================================
+// Teamtailor (JSON:API; candidate externalId IS the job-application id)
+// ============================================================================
+Deno.test('teamtailor: reads emit valid normalized shapes', async () => {
+  const restore = installRouter([
+    { match: '/job-applications', body: ttFx.applications },
+    { match: 'filter[status]=open', body: ttFx.jobs },
+    { match: '/stages', body: ttFx.stages },
+  ]);
+  try {
+    const reqs = await teamtailor.listRequisitions('k');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, null);
+    reqs.items.forEach(assertRequisition);
+    assertEquals(reqs.items[0]!.externalId, 'job_tt1');
+
+    const cands = await teamtailor.listCandidatesForRequisition('k', 'job_tt1');
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    // externalId is the job-application id, not the candidate id.
+    assertEquals(cands.items[0]!.externalId, 'app_tt1');
+    assertEquals(cands.items[0]!.fullName, 'Tess Sample');
+
+    const stages = await teamtailor.listStages('k', 'job_tt1');
+    stages.forEach(assertStage);
+    assertEquals(stages[0]!.id, 'stg_tt1');
+
+    // No tag vocabulary endpoint — listTags is intentionally empty.
+    const tags = await teamtailor.listTags('k');
+    assertEquals(tags.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('teamtailor: single-page cursor returns the links.next URL', async () => {
+  const restore = installRouter([
+    { match: 'filter[status]=open', body: ttFx.jobsHasNext },
+  ]);
+  try {
+    const reqs = await teamtailor.listRequisitions('k', '');
+    assertEquals(
+      reqs.nextCursor,
+      'https://api.teamtailor.com/v1/jobs?page[number]=2',
+    );
   } finally {
     restore();
   }

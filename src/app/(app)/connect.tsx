@@ -33,6 +33,7 @@ const CONNECTABLE_PROVIDERS: ProviderId[] = [
   'lever',
   'workable',
   'recruitee',
+  'teamtailor',
 ];
 
 interface ProviderMeta {
@@ -145,8 +146,11 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   teamtailor: {
     name: 'Teamtailor',
     subtitle: 'Teamtailor API v1 • Token auth (JSON:API)',
-    ready: false,
+    ready: true,
     authType: 'api_key',
+    apiKeyLabel: 'Teamtailor API key',
+    apiKeyHint:
+      'Settings → Integrations → API keys. Grant read scope for sourcing; add the admin/write scope if you want swipe actions (advance stage, reject) to fire in Teamtailor.',
   },
   icims: {
     name: 'iCIMS',

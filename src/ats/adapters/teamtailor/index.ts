@@ -1,20 +1,21 @@
-// Teamtailor adapter (in-app shell).
+// Teamtailor adapter (in-app shell — capabilities only; real HTTP lives in
+// supabase/functions/_shared/teamtailor.ts and runs through the proxy).
 //
-// Teamtailor uses a token-based API: `Authorization: Token token=<key>`
-// plus an `X-Api-Version` header (currently `20240404`). Base URL:
-// https://api.teamtailor.com/v1. JSON:API style responses.
+// Teamtailor uses a token-based API: `Authorization: Token token=<key>` plus an
+// `X-Api-Version` header. Base URL: https://api.teamtailor.com/v1. JSON:API.
 //
-// Capabilities reflect what Teamtailor exposes for candidates:
-//   - advance stage: relationship update to set a candidate's stage
-//   - reject: PATCH candidate with rejected: true (+ optional reason)
-//   - apply tag: tags are a relationship; POST candidate-tags pivot
-//   - add note: POST notes
-//   - send message: messages API supports sending email to candidates
-//   - email templates: triggers / templates are surfaced via API
+// Shipped capabilities (this version): advance stage + reject. Both PATCH the
+// candidate's job-application. Deferred — capabilities() reports false so the
+// settings UI doesn't offer them:
+//   - apply tag: Teamtailor tags are free-form strings with no list/vocab
+//     endpoint, so there's nothing to populate the tag picker with.
+//   - add note: the activities/notes endpoint needs a Teamtailor `user` id we
+//     don't capture at connect time (a future extras key).
+//   - send message / template: messaging API not wired yet.
 
 import type { AtsAdapter } from '../../types';
 
-const NOT_IMPLEMENTED = 'teamtailor: adapter shell — Deno client not implemented yet';
+const NOT_IMPLEMENTED = 'teamtailor: adapter shell — calls go through the proxy';
 
 export const teamtailorAdapter: AtsAdapter = {
   providerId: 'teamtailor',
@@ -43,10 +44,10 @@ export const teamtailorAdapter: AtsAdapter = {
     return {
       canAdvanceStage: true,
       canReject: true,
-      canApplyTag: true,
-      canSendMessage: true,
-      canAddNote: true,
-      canSendTemplate: true,
+      canApplyTag: false,
+      canSendMessage: false,
+      canAddNote: false,
+      canSendTemplate: false,
     };
   },
   listStages() {

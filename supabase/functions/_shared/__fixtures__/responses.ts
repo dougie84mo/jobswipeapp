@@ -208,3 +208,54 @@ export const recruitee = {
   stages: { stages: [{ id: 50, name: 'New', category: 'new', position: 0 }] },
   tags: { tags: [{ id: 400, name: 'inbound' }] },
 };
+
+// ============================================================================
+// Teamtailor (JSON:API; GET, links.next pagination; string ids). Candidates are
+// keyed by the job-application id, with the candidate resource in `included`.
+// ============================================================================
+export const teamtailor = {
+  jobs: {
+    data: [{
+      id: 'job_tt1',
+      type: 'jobs',
+      attributes: { title: 'Backend Engineer', status: 'open' },
+    }],
+    links: { next: null },
+  },
+  jobsHasNext: {
+    data: [{
+      id: 'job_tt1',
+      type: 'jobs',
+      attributes: { title: 'Backend Engineer', status: 'open' },
+    }],
+    links: { next: 'https://api.teamtailor.com/v1/jobs?page[number]=2' },
+  },
+  applications: {
+    data: [{
+      id: 'app_tt1',
+      type: 'job-applications',
+      relationships: {
+        candidate: { data: { id: 'cand_tt1', type: 'candidates' } },
+      },
+    }],
+    included: [{
+      id: 'cand_tt1',
+      type: 'candidates',
+      attributes: {
+        'first-name': 'Tess',
+        'last-name': 'Sample',
+        pitch: 'Engineer',
+        tags: ['referral'],
+      },
+    }],
+    links: { next: null },
+  },
+  stages: {
+    data: [{
+      id: 'stg_tt1',
+      type: 'stages',
+      attributes: { name: 'Screening', 'row-order': 1 },
+    }],
+    links: { next: null },
+  },
+};

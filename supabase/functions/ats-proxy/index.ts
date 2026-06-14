@@ -77,6 +77,15 @@ import {
   moveStage as recruiteeMoveStage,
   testConnection as recruiteeTestConnection,
 } from '../_shared/recruitee.ts';
+import {
+  changeStage as ttChangeStage,
+  listCandidatesForRequisition as ttListCandidates,
+  listRequisitions as ttListRequisitions,
+  listStages as ttListStages,
+  listTags as ttListTags,
+  rejectApplication as ttReject,
+  testConnection as ttTestConnection,
+} from '../_shared/teamtailor.ts';
 
 type Method =
   | 'testConnection'
@@ -552,6 +561,37 @@ async function dispatch(
           apiKey,
           str(args, 'candidateExternalId'),
           str(args, 'text'),
+        );
+    }
+  }
+  if (provider === 'teamtailor') {
+    switch (method) {
+      case 'testConnection':
+        return ttTestConnection(apiKey);
+      case 'listRequisitions':
+        return ttListRequisitions(apiKey, cursorArg(args));
+      case 'listCandidatesForRequisition':
+        return ttListCandidates(
+          apiKey,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
+      case 'listStages':
+        return ttListStages(apiKey, str(args, 'requisitionExternalId'));
+      case 'listTags':
+        return ttListTags(apiKey);
+      case 'advanceCandidateStage':
+        // candidateExternalId is the Teamtailor job-application id.
+        return ttChangeStage(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'stageId'),
+        );
+      case 'rejectCandidate':
+        return ttReject(
+          apiKey,
+          str(args, 'candidateExternalId'),
+          strOpt(args, 'reasonId'),
         );
     }
   }
