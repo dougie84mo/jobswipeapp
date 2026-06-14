@@ -27,6 +27,7 @@ import {
 
 const realFetch = globalThis.fetch;
 const realSetTimeout = globalThis.setTimeout;
+const realAbortTimeout = AbortSignal.timeout;
 
 interface FetchHarness {
   /** Status codes to return, in order; the last is reused once exhausted. */
@@ -45,8 +46,13 @@ function installFetch(responses: () => Response): FetchHarness {
     restore: () => {
       globalThis.fetch = realFetch;
       globalThis.setTimeout = realSetTimeout;
+      AbortSignal.timeout = realAbortTimeout;
     },
   };
+  // Avoid AbortSignal.timeout's real timer (the stubbed fetch resolves before
+  // it fires, which would otherwise leak an op in deno test's sanitizer).
+  AbortSignal.timeout =
+    (() => new AbortController().signal) as typeof AbortSignal.timeout;
   // deno-lint-ignore no-explicit-any
   globalThis.fetch = ((_url: any, _init?: any) => {
     harness.calls++;

@@ -44,6 +44,11 @@ interface Route {
 
 function installRouter(routes: Route[]): () => void {
   const real = globalThis.fetch;
+  const realAbortTimeout = AbortSignal.timeout;
+  // Avoid AbortSignal.timeout's real timer leaking an op (stubbed fetch
+  // resolves before it fires).
+  AbortSignal.timeout =
+    (() => new AbortController().signal) as typeof AbortSignal.timeout;
   // deno-lint-ignore no-explicit-any
   globalThis.fetch = ((input: any, init?: any) => {
     const url = typeof input === 'string'
@@ -63,6 +68,7 @@ function installRouter(routes: Route[]): () => void {
   }) as typeof fetch;
   return () => {
     globalThis.fetch = real;
+    AbortSignal.timeout = realAbortTimeout;
   };
 }
 

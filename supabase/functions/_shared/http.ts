@@ -22,6 +22,8 @@ export const MAX_RETRY_ATTEMPTS = 3;
 export const MAX_PAGES = 10;
 /** Default page size requested from providers that take one. */
 export const PER_PAGE = 100;
+/** Default per-request timeout so a hung upstream can't block the invocation. */
+export const DEFAULT_TIMEOUT_MS = 20_000;
 
 /** HTTP Basic with the API key as username and empty password (`${key}:`). */
 export function authHeaderBasic(apiKey: string): string {
@@ -71,6 +73,8 @@ export interface CallCtx {
   route: string;
   /** Override the default retry cap for this call. */
   maxRetries?: number;
+  /** Override the default per-request timeout (ms). */
+  timeoutMs?: number;
 }
 
 /**
@@ -83,15 +87,22 @@ export async function fetchWithBackoff(
   url: string,
   init: RequestInit,
   maxRetries: number = MAX_RETRY_ATTEMPTS,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<Response> {
+  // A fresh timeout signal per attempt so a hung upstream aborts instead of
+  // blocking the whole edge invocation. A caller-provided signal wins.
+  const attemptInit = (): RequestInit => ({
+    ...init,
+    signal: init.signal ?? AbortSignal.timeout(timeoutMs),
+  });
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const res = await fetch(url, init);
+    const res = await fetch(url, attemptInit());
     if (res.status !== 429) return res;
     const retryAfter = Number(res.headers.get('Retry-After')) || 1;
     await res.body?.cancel();
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
   }
-  return fetch(url, init);
+  return fetch(url, attemptInit());
 }
 
 /** Throw an HttpError on a non-ok response, draining the body first. */
@@ -117,6 +128,7 @@ export async function callGet<T>(
     url,
     { method: 'GET', headers },
     ctx.maxRetries,
+    ctx.timeoutMs,
   );
   await ensureOk(res, ctx.provider, ctx.route);
   return (await res.json()) as T;
@@ -141,6 +153,7 @@ export async function callWrite<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
     },
     ctx.maxRetries,
+    ctx.timeoutMs,
   );
   // Mirror the old per-client format (`Provider <status> ... for POST /path`).
   await ensureOk(res, ctx.provider, `${method} ${ctx.route}`);

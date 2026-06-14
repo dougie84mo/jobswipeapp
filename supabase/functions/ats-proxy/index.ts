@@ -140,6 +140,26 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// Structured log for a pre-dispatch early return (bad request, lookup/creds
+// failure, on-behalf-of guard) so these don't vanish from the logs. Same shape
+// as the per-dispatch logRequest, with ok:false and a redacted reason.
+function logFailure(
+  status: number,
+  reason: string,
+  fields: { integrationId?: string; provider?: string; method?: string } = {},
+): void {
+  logRequest({
+    integrationId: fields.integrationId ?? '',
+    provider: fields.provider ?? '',
+    method: fields.method ?? '',
+    route: 'direct',
+    durationMs: 0,
+    ok: false,
+    status,
+    errorContext: reason,
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -160,6 +180,10 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'invalid JSON body' }, 400);
   }
   if (!body?.integrationId || !body?.method) {
+    logFailure(400, 'integrationId and method are required', {
+      integrationId: body?.integrationId,
+      method: body?.method,
+    });
     return jsonResponse(
       { error: 'integrationId and method are required' },
       400,
@@ -184,12 +208,20 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (lookupError) {
+    logFailure(500, 'integration lookup failed', {
+      integrationId: body.integrationId,
+      method: body.method,
+    });
     return jsonResponse({
       error: `integration lookup failed: ${lookupError.message}`,
     }, 500);
   }
   const integration = integrationRaw as IntegrationRow | null;
   if (!integration) {
+    logFailure(404, 'integration not found', {
+      integrationId: body.integrationId,
+      method: body.method,
+    });
     return jsonResponse({ error: 'integration not found' }, 404);
   }
 
@@ -198,11 +230,21 @@ Deno.serve(async (req: Request) => {
     { p_integration_id: body.integrationId },
   );
   if (credsError) {
+    logFailure(500, 'credentials read failed', {
+      integrationId: body.integrationId,
+      provider: integration.provider,
+      method: body.method,
+    });
     return jsonResponse({
       error: `credentials read failed: ${credsError.message}`,
     }, 500);
   }
   if (!apiKey || typeof apiKey !== 'string') {
+    logFailure(400, 'integration credentials are empty', {
+      integrationId: body.integrationId,
+      provider: integration.provider,
+      method: body.method,
+    });
     return jsonResponse({ error: 'integration credentials are empty' }, 400);
   }
 
@@ -211,6 +253,11 @@ Deno.serve(async (req: Request) => {
     providerRequiresOnBehalfOf(integration.provider) &&
     !integration.on_behalf_of_user_id
   ) {
+    logFailure(400, 'missing on_behalf_of_user_id for write', {
+      integrationId: body.integrationId,
+      provider: integration.provider,
+      method: body.method,
+    });
     return jsonResponse(
       {
         error:
