@@ -13,6 +13,7 @@ declare
   mock_user_id uuid := '00000000-0000-0000-0000-00000000aaaa';
   mock_integration_id uuid;
   mock_req_id uuid;
+  mock_secret_id uuid;
 begin
   -- Create the auth user. Password is dev-only — never use against a real project.
   insert into auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, aud, role)
@@ -29,9 +30,15 @@ begin
 
   -- recruiter_profiles row is auto-created by the on_auth_user_created trigger.
 
-  -- Mock integration (credentials are a dummy bytea — never real)
-  insert into public.integrations (user_id, provider, display_label, credentials_encrypted, status)
-  values (mock_user_id, 'mock', 'Local Mock ATS', '\x00'::bytea, 'active')
+  -- Mock integration. Since migration 0006, credentials live in Vault and
+  -- integrations references them by secret id (not the old bytea column). The
+  -- mock provider never uses the credential — it bypasses the proxy — but the
+  -- FK is NOT NULL, so seed a throwaway Vault secret.
+  mock_secret_id := vault.create_secret(
+    'mock-key', 'integration-mock-seed', 'Local mock ATS dev secret'
+  );
+  insert into public.integrations (user_id, provider, display_label, credentials_secret_id, status)
+  values (mock_user_id, 'mock', 'Local Mock ATS', mock_secret_id, 'active')
   returning id into mock_integration_id;
 
   -- A few requisitions
