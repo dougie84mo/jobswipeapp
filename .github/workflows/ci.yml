@@ -47,4 +47,30 @@ jobs:
         run: deno lint
 
       - name: Test
-        run: deno test --allow-all --no-check || echo "no tests yet"
+        run: deno test --allow-all --no-check
+
+  rls:
+    name: RLS — cross-user isolation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase (applies migrations)
+        run: supabase start
+
+      - name: RLS isolation tests
+        # URL/keys fall back to the CLI's well-known local defaults inside the
+        # test, so no env wiring is needed here.
+        run: deno test --allow-net --allow-env --no-check supabase/tests/rls/isolation.test.ts
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
