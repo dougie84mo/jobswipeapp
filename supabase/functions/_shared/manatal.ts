@@ -25,7 +25,7 @@
 // /matches/{id}/ expects — that must be confirmed against a live sandbox before
 // we write back, to avoid silently no-op'ing swipe actions.
 
-import { callGet, MAX_PAGES } from './http.ts';
+import { callGet, MAX_PAGES, pooledMap } from './http.ts';
 
 const BASE_URL = 'https://api.manatal.com/open/v3';
 
@@ -191,8 +191,9 @@ async function mapMatches(
   matches: ManatalMatch[],
   jobExternalId: string,
 ): Promise<NormCandidate[]> {
-  return Promise.all(
-    matches.map(async (m) => {
+  return pooledMap(
+    matches,
+    async (m) => {
       const c = await resolveCandidate(apiKey, m.candidate);
       const fullName = str(c?.full_name) ??
         [str(c?.first_name), str(c?.last_name)].filter(Boolean).join(' ')
@@ -204,7 +205,7 @@ async function mapMatches(
         fullName: fullName || `Candidate ${c?.id ?? m.id}`,
         raw: { match: m, candidate: c },
       } satisfies NormCandidate;
-    }),
+    },
   );
 }
 

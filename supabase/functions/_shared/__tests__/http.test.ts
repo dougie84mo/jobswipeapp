@@ -23,6 +23,7 @@ import {
   fetchWithBackoff,
   HttpError,
   MAX_RETRY_ATTEMPTS,
+  pooledMap,
 } from '../http.ts';
 
 const realFetch = globalThis.fetch;
@@ -219,4 +220,27 @@ Deno.test('callWrite includes the method in the error route', async () => {
   } finally {
     h.restore();
   }
+});
+
+Deno.test('pooledMap preserves input order', async () => {
+  const out = await pooledMap(
+    [1, 2, 3, 4, 5],
+    (n) => Promise.resolve(n * 2),
+    2,
+  );
+  assertEquals(out, [2, 4, 6, 8, 10]);
+});
+
+Deno.test('pooledMap never exceeds the concurrency cap', async () => {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const items = Array.from({ length: 12 }, (_, i) => i);
+  await pooledMap(items, async () => {
+    inFlight++;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((r) => setTimeout(r, 0));
+    inFlight--;
+  }, 3);
+  assert(maxInFlight <= 3, `maxInFlight ${maxInFlight} must be <= 3`);
+  assert(maxInFlight > 1, 'pooledMap should run items in parallel');
 });

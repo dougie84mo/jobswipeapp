@@ -21,6 +21,7 @@ import {
   callWrite,
   MAX_PAGES,
   PER_PAGE,
+  pooledMap,
 } from './http.ts';
 
 const BASE_URL = 'https://harvest.greenhouse.io/v1';
@@ -259,8 +260,9 @@ export async function listCandidatesForRequisition(
     apps = page.items;
     nextCursor = page.nextCursor;
   }
-  const candidates = await Promise.all(
-    apps.map(async (app) => {
+  const candidates = await pooledMap(
+    apps,
+    async (app) => {
       const c = await call<GhCandidate>(
         apiKey,
         `/candidates/${app.candidate_id}`,
@@ -283,7 +285,7 @@ export async function listCandidatesForRequisition(
         skills: c.tags ?? undefined,
         raw: c,
       } satisfies NormCandidate;
-    }),
+    },
   );
   return { items: candidates, nextCursor };
 }

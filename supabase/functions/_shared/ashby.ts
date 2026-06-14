@@ -18,7 +18,7 @@
 // Ashby's cursor model (moreDataAvailable + nextCursor in the envelope) up
 // to MAX_PAGES iterations; the proxy returns a flat array.
 
-import { authHeaderBasic, callWrite, MAX_PAGES } from './http.ts';
+import { authHeaderBasic, callWrite, MAX_PAGES, pooledMap } from './http.ts';
 
 const BASE_URL = 'https://api.ashbyhq.com';
 
@@ -260,8 +260,9 @@ export async function listCandidatesForRequisition(
     apps = page.items;
     nextCursor = page.nextCursor;
   }
-  const candidates = await Promise.all(
-    apps.map(async (app) => {
+  const candidates = await pooledMap(
+    apps,
+    async (app) => {
       const c = await call<AshbyCandidate>(apiKey, '/candidate.info', {
         id: app.candidateId,
       });
@@ -278,7 +279,7 @@ export async function listCandidatesForRequisition(
         skills: c.tags?.map((t) => t.title),
         raw: c,
       } satisfies NormCandidate;
-    }),
+    },
   );
   return { items: candidates, nextCursor };
 }

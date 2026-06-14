@@ -160,3 +160,32 @@ export async function callWrite<T>(
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+/** Default cap on concurrent in-flight requests for fan-out (N+1) reads. */
+export const DEFAULT_CONCURRENCY = 6;
+
+/**
+ * Map `fn` over `items` with bounded concurrency, preserving input order.
+ *
+ * The candidate-detail fan-outs (Greenhouse / Ashby / Manatal fetch one record
+ * per candidate) would otherwise fire up to MAX_PAGES × PER_PAGE requests at
+ * once via Promise.all — a burst that trips provider rate limits. This caps the
+ * number in flight so the 429 backoff has room to work.
+ */
+export async function pooledMap<T, R>(
+  items: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  concurrency: number = DEFAULT_CONCURRENCY,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < items.length) {
+      const i = cursor++;
+      results[i] = await fn(items[i] as T, i);
+    }
+  }
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
