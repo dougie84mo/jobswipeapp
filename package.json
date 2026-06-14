@@ -51,6 +51,8 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
+    "eslint": "^9.39.4",
+    "eslint-config-expo": "~10.0.0",
     "react-test-renderer": "^19.1.0",
     "supabase": "^2.101.0",
     "typescript": "~5.9.2"

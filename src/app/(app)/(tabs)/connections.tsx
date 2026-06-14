@@ -29,14 +29,15 @@ export default function ConnectionsScreen() {
 
   const rows = integrationsQuery.data ?? [];
   // Bucket connected sources by kind so each group renders under its own
-  // header. Order: ATS first, job boards second.
+  // header. Order: ATS first, job boards second. Depend on the query data
+  // (not the `?? []` alias, which is a fresh array every render).
   const grouped = useMemo(() => {
     const buckets: Record<SourceKind, IntegrationRow[]> = { ats: [], job_board: [] };
-    for (const row of rows) {
+    for (const row of integrationsQuery.data ?? []) {
       buckets[sourceKindFor(row.provider as ProviderId)].push(row);
     }
     return buckets;
-  }, [rows]);
+  }, [integrationsQuery.data]);
 
   return (
     <ThemedView style={styles.container}>

@@ -90,11 +90,13 @@ export function useDeckCandidates(
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
-  // query.fetchNextPage is stable across renders in react-query v5, so this
-  // callback is stable too — safe to depend on from the consumer's effect.
+  // query.fetchNextPage is stable across renders in react-query v5; hoist it to
+  // a local so this callback stays stable AND satisfies exhaustive-deps —
+  // safe to depend on from the consumer's effect.
+  const queryFetchNextPage = query.fetchNextPage;
   const fetchNextPage = useCallback(() => {
-    void query.fetchNextPage();
-  }, [query.fetchNextPage]);
+    void queryFetchNextPage();
+  }, [queryFetchNextPage]);
 
   return {
     candidates: (query.data?.pages ?? []).flatMap((p) => p.items),
