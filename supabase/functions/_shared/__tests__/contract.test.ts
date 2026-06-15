@@ -20,6 +20,7 @@ import * as workable from '../workable.ts';
 import * as recruitee from '../recruitee.ts';
 import * as teamtailor from '../teamtailor.ts';
 import * as manatal from '../manatal.ts';
+import { listCandidatesForProvider } from '../dispatch.ts';
 
 import {
   ashby as ashbyFx,
@@ -464,6 +465,23 @@ Deno.test('manatal: single-page cursor returns the DRF next URL', async () => {
       reqs.nextCursor,
       'https://api.manatal.com/open/v3/jobs/?status=open&page=2',
     );
+  } finally {
+    restore();
+  }
+});
+
+// ============================================================================
+// Shared read dispatch (used by detect-new-candidates)
+// ============================================================================
+Deno.test('dispatch: listCandidatesForProvider routes to the provider client', async () => {
+  const restore = installRouter([
+    { match: '/applications', body: ghFx.applications },
+    { match: '/candidates/', body: ghFx.candidate },
+  ]);
+  try {
+    const page = await listCandidatesForProvider('greenhouse', 'k', {}, '101');
+    assertEquals(page.items.length, 1);
+    assertEquals(page.items[0]!.externalId, '7001');
   } finally {
     restore();
   }
