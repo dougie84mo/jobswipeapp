@@ -151,6 +151,16 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
       });
     if (setErr) throw new Error(`seed integration_settings: ${setErr.message}`);
 
+    const { error: topicErr } = await service
+      .from("notification_topics")
+      .insert({
+        user_id: userA,
+        integration_id: integrationId,
+        requisition_external_id: "req-1",
+        enabled: true,
+      });
+    if (topicErr) throw new Error(`seed notification_topics: ${topicErr.message}`);
+
     // --- Sanity: A sees its own data --------------------------------------
     assertEquals((await A.from("integrations").select("id")).data?.length, 1);
     assertEquals((await A.from("requisitions").select("id")).data?.length, 1);
@@ -158,6 +168,10 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
     assertEquals((await A.from("swipes").select("id")).data?.length, 1);
     assertEquals(
       (await A.from("integration_settings").select("id")).data?.length,
+      1,
+    );
+    assertEquals(
+      (await A.from("notification_topics").select("id")).data?.length,
       1,
     );
 
@@ -169,6 +183,7 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
         "candidates",
         "swipes",
         "integration_settings",
+        "notification_topics",
       ]
     ) {
       const { data, error } = await B.from(table).select("id");

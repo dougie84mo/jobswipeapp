@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,14 +8,23 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useIntegration } from '@/features/integrations/queries';
 import { useRequisitions } from '@/features/integrations/requisitions';
+import {
+  useNotificationTopics,
+  useSetNotificationTopic,
+} from '@/features/notifications/topics';
 import type { Requisition } from '@/ats/types';
+
+const EMPTY_TOPICS: ReadonlySet<string> = new Set();
 
 export default function IntegrationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const integrationQuery = useIntegration(id);
   const requisitionsQuery = useRequisitions(integrationQuery.data ?? null);
+  const topicsQuery = useNotificationTopics(integrationQuery.data?.id);
+  const setTopic = useSetNotificationTopic();
 
   const integration = integrationQuery.data;
+  const alertTopics = topicsQuery.data ?? EMPTY_TOPICS;
   const headerTitle = integration?.display_label ?? 'Requisitions';
 
   return (
@@ -82,17 +92,29 @@ export default function IntegrationDetailScreen() {
             keyExtractor={(item) => item.externalId}
             contentContainerStyle={styles.listContent}
             ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
-            renderItem={({ item }) => (
-              <RequisitionCard
-                item={item}
-                onPress={() =>
-                  router.push({
-                    pathname: '/swipe/[reqId]',
-                    params: { reqId: item.externalId, integrationId: integration.id },
-                  })
-                }
-              />
-            )}
+            renderItem={({ item }) => {
+              const alertsOn = alertTopics.has(item.externalId);
+              return (
+                <RequisitionCard
+                  item={item}
+                  alertsOn={alertsOn}
+                  toggleDisabled={setTopic.isPending}
+                  onToggleAlerts={() =>
+                    setTopic.mutate({
+                      integrationId: integration.id,
+                      requisitionExternalId: item.externalId,
+                      enabled: !alertsOn,
+                    })
+                  }
+                  onPress={() =>
+                    router.push({
+                      pathname: '/swipe/[reqId]',
+                      params: { reqId: item.externalId, integrationId: integration.id },
+                    })
+                  }
+                />
+              );
+            }}
           />
         )}
       </SafeAreaView>
@@ -103,9 +125,15 @@ export default function IntegrationDetailScreen() {
 function RequisitionCard({
   item,
   onPress,
+  alertsOn,
+  onToggleAlerts,
+  toggleDisabled,
 }: {
   item: Requisition;
   onPress: () => void;
+  alertsOn: boolean;
+  onToggleAlerts: () => void;
+  toggleDisabled: boolean;
 }) {
   return (
     <Pressable
@@ -113,10 +141,30 @@ function RequisitionCard({
       style={({ pressed }) => [styles.cardPressable, pressed && styles.pressed]}
     >
       <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText type="smallBold">{item.title}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {[item.department, item.location].filter(Boolean).join(' • ')}
-        </ThemedText>
+        <View style={styles.cardText}>
+          <ThemedText type="smallBold">{item.title}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {[item.department, item.location].filter(Boolean).join(' • ')}
+          </ThemedText>
+        </View>
+        {/* Nested Pressable: taps toggle alerts without navigating into the deck. */}
+        <Pressable
+          onPress={onToggleAlerts}
+          disabled={toggleDisabled}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityState={{ checked: alertsOn, disabled: toggleDisabled }}
+          accessibilityLabel={alertsOn
+            ? `Turn off new-candidate alerts for ${item.title}`
+            : `Turn on new-candidate alerts for ${item.title}`}
+          style={({ pressed }) => [styles.bell, pressed && styles.pressed]}
+        >
+          <Ionicons
+            name={alertsOn ? 'notifications' : 'notifications-outline'}
+            size={20}
+            color={alertsOn ? '#208AEF' : '#8a8a8a'}
+          />
+        </Pressable>
       </ThemedView>
     </Pressable>
   );
@@ -139,8 +187,13 @@ const styles = StyleSheet.create({
   card: {
     padding: Spacing.three,
     borderRadius: Spacing.three,
-    gap: Spacing.one,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
   },
+  cardText: { flex: 1, gap: Spacing.one },
+  bell: { padding: Spacing.one },
   pressed: { opacity: 0.7 },
   headerActions: {
     flexDirection: 'row',
