@@ -299,3 +299,47 @@ export const manatal = {
     results: [{ id: 11, name: 'Screening', rank: 1 }],
   },
 };
+
+// ============================================================================
+// BambooHR (Basic auth; numeric ids -> must stringify). Jobs come back as a
+// bare array (no pagination); applications use a { applications,
+// paginationComplete } envelope with 1-based page-number pagination. Candidates
+// are keyed by the application id (the write target), not the applicant id.
+// ============================================================================
+export const bamboohr = {
+  jobs: [
+    {
+      id: 801,
+      title: { id: 12, label: 'Office Manager' },
+      status: { id: 1, label: 'Open' },
+      department: { id: 5, label: 'Operations' },
+      location: { id: 8, label: 'Remote' },
+    },
+    // A non-open job — must be filtered out of sourcing.
+    {
+      id: 802,
+      title: { id: 13, label: 'Archived Role' },
+      status: { id: 4, label: 'Filled' },
+    },
+  ],
+  applications: {
+    applications: [{
+      id: 318,
+      applicant: { id: 1, firstName: 'Bree', lastName: 'Sample' },
+      status: { id: 2, label: 'Active' },
+    }],
+    paginationComplete: true,
+  },
+  applicationsHasNext: {
+    applications: [{
+      id: 318,
+      applicant: { id: 1, firstName: 'Bree', lastName: 'Sample' },
+      status: { id: 2, label: 'Active' },
+    }],
+    paginationComplete: false,
+  },
+  statuses: [
+    { id: 1, name: 'New' },
+    { id: 2, name: 'Active' },
+  ],
+};

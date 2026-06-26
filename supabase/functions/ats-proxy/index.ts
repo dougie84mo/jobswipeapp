@@ -93,6 +93,15 @@ import {
   listTags as manatalListTags,
   testConnection as manatalTestConnection,
 } from '../_shared/manatal.ts';
+import {
+  addComment as bamboohrAddComment,
+  changeStatus as bamboohrChangeStatus,
+  listCandidatesForRequisition as bamboohrListCandidates,
+  listRequisitions as bamboohrListRequisitions,
+  listStages as bamboohrListStages,
+  listTags as bamboohrListTags,
+  testConnection as bamboohrTestConnection,
+} from '../_shared/bamboohr.ts';
 
 type Method =
   | 'testConnection'
@@ -667,6 +676,63 @@ async function dispatch(
         return manatalListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
         return manatalListTags(apiKey);
+    }
+  }
+  if (provider === 'bamboohr') {
+    const subdomain = typeof extras.company_subdomain === 'string'
+      ? extras.company_subdomain
+      : '';
+    if (!subdomain) {
+      throw new Error(
+        'BambooHR integration is missing extras.company_subdomain. Reconnect and supply your BambooHR company subdomain.',
+      );
+    }
+    switch (method) {
+      case 'testConnection':
+        return bamboohrTestConnection(subdomain, apiKey);
+      case 'listRequisitions':
+        return bamboohrListRequisitions(subdomain, apiKey, cursorArg(args));
+      case 'listCandidatesForRequisition':
+        return bamboohrListCandidates(
+          subdomain,
+          apiKey,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
+      case 'listStages':
+        return bamboohrListStages(
+          subdomain,
+          apiKey,
+          str(args, 'requisitionExternalId'),
+        );
+      case 'listTags':
+        return bamboohrListTags(subdomain, apiKey);
+      case 'advanceCandidateStage':
+        return bamboohrChangeStatus(
+          subdomain,
+          apiKey,
+          // candidateExternalId is the BambooHR application id.
+          str(args, 'candidateExternalId'),
+          str(args, 'stageId'),
+        );
+      case 'addCandidateNote':
+        return bamboohrAddComment(
+          subdomain,
+          apiKey,
+          str(args, 'candidateExternalId'),
+          str(args, 'text'),
+        );
+      case 'rejectCandidate':
+        // BambooHR has no dedicated reject endpoint — rejection is an
+        // advance_stage to a rejected status. capabilities().canReject is
+        // false, so the executor never dispatches this; fail clean if forced.
+        throw new Error(
+          'BambooHR has no reject action — move the candidate to a rejected status via advance_stage instead.',
+        );
+      case 'addCandidateTag':
+        // No tag endpoint in the public ATS API; capabilities().canApplyTag is
+        // false so this isn't dispatched. Fail clean if forced.
+        throw new Error('BambooHR does not support applying tags via the API');
     }
   }
   throw new Error(

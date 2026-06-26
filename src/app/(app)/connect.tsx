@@ -35,6 +35,7 @@ const CONNECTABLE_PROVIDERS: ProviderId[] = [
   'recruitee',
   'teamtailor',
   'manatal',
+  'bamboohr',
 ];
 
 interface ProviderMeta {
@@ -122,8 +123,15 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   bamboohr: {
     name: 'BambooHR ATS',
     subtitle: 'BambooHR API • Basic auth + company subdomain',
-    ready: false,
+    ready: true,
     authType: 'api_key',
+    apiKeyLabel: 'BambooHR API key',
+    apiKeyHint:
+      'Profile → API Keys → Add New Key. The key owner needs access to ATS settings for sourcing and swipe actions (advance stage, add note) to work.',
+    extrasKey: 'company_subdomain',
+    tenantLabel: 'BambooHR company subdomain',
+    tenantHint:
+      'Your BambooHR URL is https://<subdomain>.bamboohr.com — enter just the subdomain (e.g. "acme"). The API lives at https://api.bamboohr.com/api/gateway.php/<subdomain>/v1.',
   },
   jazzhr: {
     name: 'JazzHR',

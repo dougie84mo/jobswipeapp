@@ -20,10 +20,12 @@ import * as workable from '../workable.ts';
 import * as recruitee from '../recruitee.ts';
 import * as teamtailor from '../teamtailor.ts';
 import * as manatal from '../manatal.ts';
+import * as bamboohr from '../bamboohr.ts';
 import { listCandidatesForProvider } from '../dispatch.ts';
 
 import {
   ashby as ashbyFx,
+  bamboohr as bamboohrFx,
   greenhouse as ghFx,
   lever as leverFx,
   manatal as manatalFx,
@@ -465,6 +467,68 @@ Deno.test('manatal: single-page cursor returns the DRF next URL', async () => {
       reqs.nextCursor,
       'https://api.manatal.com/open/v3/jobs/?status=open&page=2',
     );
+  } finally {
+    restore();
+  }
+});
+
+// ============================================================================
+// BambooHR (Basic auth; numeric ids -> must stringify; candidate externalId IS
+// the application id; reads + advance stage + add note)
+// ============================================================================
+Deno.test('bamboohr: reads emit valid normalized shapes', async () => {
+  const restore = installRouter([
+    { match: '/applications', body: bamboohrFx.applications },
+    { match: '/statuses', body: bamboohrFx.statuses },
+    { match: '/jobs', body: bamboohrFx.jobs },
+  ]);
+  try {
+    const reqs = await bamboohr.listRequisitions('acme', 'k');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, null);
+    reqs.items.forEach(assertRequisition);
+    // Numeric 801 -> '801'; the non-open job (802) is filtered out.
+    assertEquals(reqs.items.length, 1);
+    assertEquals(reqs.items[0]!.externalId, '801');
+
+    const cands = await bamboohr.listCandidatesForRequisition(
+      'acme',
+      'k',
+      '801',
+    );
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    // externalId is the application id, not the applicant id.
+    assertEquals(cands.items[0]!.externalId, '318');
+    assertEquals(cands.items[0]!.requisitionExternalId, '801');
+    assertEquals(cands.items[0]!.fullName, 'Bree Sample');
+
+    const stages = await bamboohr.listStages('acme', 'k', '801');
+    stages.forEach(assertStage);
+    assertEquals(stages[0]!.id, '1');
+    assertEquals(stages[0]!.name, 'New');
+
+    // No tag vocabulary endpoint — listTags is intentionally empty.
+    const tags = await bamboohr.listTags('acme', 'k');
+    assertEquals(tags.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('bamboohr: single-page cursor returns the next page number', async () => {
+  const restore = installRouter([
+    { match: '/applications', body: bamboohrFx.applicationsHasNext },
+  ]);
+  try {
+    const cands = await bamboohr.listCandidatesForRequisition(
+      'acme',
+      'k',
+      '801',
+      '', // '' -> first page only
+    );
+    assertPage(cands);
+    assertEquals(cands.nextCursor, '2');
   } finally {
     restore();
   }
