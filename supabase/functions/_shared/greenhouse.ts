@@ -60,11 +60,14 @@ async function callPaged<T>(apiKey: string, basePath: string): Promise<T[]> {
   const all: T[] = [];
   let cursor: string | undefined = '';
   for (let i = 0; i < MAX_PAGES; i++) {
-    const { items, nextCursor } = await callOnePage<T>(
-      apiKey,
-      basePath,
-      cursor,
-    );
+    // Annotated to break TS 6's circular-inference check (TS7022) on a generic
+    // helper called inside a generic function.
+    const { items, nextCursor }: { items: T[]; nextCursor: string | null } =
+      await callOnePage<T>(
+        apiKey,
+        basePath,
+        cursor,
+      );
     all.push(...items);
     if (!nextCursor) break;
     cursor = nextCursor;

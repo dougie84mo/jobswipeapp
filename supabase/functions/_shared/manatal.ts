@@ -56,7 +56,9 @@ async function walkAll<T>(apiKey: string, firstUrl: string): Promise<T[]> {
   const all: T[] = [];
   let cursor: string | undefined = '';
   for (let i = 0; i < MAX_PAGES; i++) {
-    const page = await getPage<T>(apiKey, firstUrl, cursor);
+    // Annotated to break TS 6's circular-inference check (TS7022) on a generic
+    // helper called inside a generic function.
+    const page: DrfPage<T> = await getPage<T>(apiKey, firstUrl, cursor);
     all.push(...(page.results ?? []));
     const next = page.next ?? null;
     if (!next) break;
@@ -224,7 +226,11 @@ export async function listCandidatesForRequisition(
     const all: NormCandidate[] = [];
     let c: string | undefined = '';
     for (let i = 0; i < MAX_PAGES; i++) {
-      const page = await getPage<ManatalMatch>(apiKey, firstUrl, c);
+      const page: DrfPage<ManatalMatch> = await getPage<ManatalMatch>(
+        apiKey,
+        firstUrl,
+        c,
+      );
       all.push(
         ...(await mapMatches(apiKey, page.results ?? [], jobExternalId)),
       );
