@@ -343,3 +343,42 @@ export const bamboohr = {
     { id: 2, name: 'Active' },
   ],
 };
+
+// ============================================================================
+// SmartRecruiters (OAuth client-credentials; string ids; ListResult `content`
+// envelope with `nextPageId` cursor). The token exchange is stubbed via the
+// /identity/oauth/token route. Candidate externalId is the candidate id; writes
+// target the (candidate, job) pair so the test only exercises reads.
+// ============================================================================
+export const smartrecruiters = {
+  token: {
+    access_token: 'tkn_sr_test',
+    token_type: 'bearer',
+    expires_in: 3600,
+  },
+  jobs: {
+    content: [{
+      id: 'job_sr1',
+      title: 'Backend Engineer',
+      status: 'SOURCING',
+      department: { id: 'dep1', label: 'Engineering' },
+      location: { city: 'Berlin', country: 'de' },
+    }],
+    totalFound: 1,
+  },
+  jobsHasNext: {
+    content: [{ id: 'job_sr1', title: 'Backend Engineer', status: 'SOURCING' }],
+    nextPageId: 'PAGE_2',
+    totalFound: 2,
+  },
+  candidates: {
+    content: [{
+      id: 'cand_sr1',
+      firstName: 'Sven',
+      lastName: 'Sample',
+      email: 'sven@example.test',
+      location: { city: 'Berlin', country: 'de' },
+    }],
+    totalFound: 1,
+  },
+};

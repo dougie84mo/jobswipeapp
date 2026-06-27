@@ -102,6 +102,15 @@ import {
   listTags as bamboohrListTags,
   testConnection as bamboohrTestConnection,
 } from '../_shared/bamboohr.ts';
+import {
+  listCandidatesForRequisition as srListCandidates,
+  listRequisitions as srListRequisitions,
+  listStages as srListStages,
+  listTags as srListTags,
+  rejectCandidate as srReject,
+  testConnection as srTestConnection,
+  updateStatus as srUpdateStatus,
+} from '../_shared/smartrecruiters.ts';
 
 type Method =
   | 'testConnection'
@@ -733,6 +742,59 @@ async function dispatch(
         // No tag endpoint in the public ATS API; capabilities().canApplyTag is
         // false so this isn't dispatched. Fail clean if forced.
         throw new Error('BambooHR does not support applying tags via the API');
+    }
+  }
+  if (provider === 'smartrecruiters') {
+    // OAuth client-credentials: client_secret is the Vault credential (apiKey),
+    // client_id rides in extras (an identifier, not a secret).
+    const clientId = typeof extras.client_id === 'string'
+      ? extras.client_id
+      : '';
+    if (!clientId) {
+      throw new Error(
+        'SmartRecruiters integration is missing extras.client_id. Reconnect and supply your OAuth client id.',
+      );
+    }
+    const clientSecret = apiKey;
+    switch (method) {
+      case 'testConnection':
+        return srTestConnection(clientId, clientSecret);
+      case 'listRequisitions':
+        return srListRequisitions(clientId, clientSecret, cursorArg(args));
+      case 'listCandidatesForRequisition':
+        return srListCandidates(
+          clientId,
+          clientSecret,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
+      case 'listStages':
+        return srListStages();
+      case 'listTags':
+        return srListTags();
+      case 'advanceCandidateStage':
+        return srUpdateStatus(
+          clientId,
+          clientSecret,
+          str(args, 'candidateExternalId'),
+          // SmartRecruiters writes target the (candidate, job) pair.
+          str(args, 'requisitionExternalId'),
+          str(args, 'stageId'),
+        );
+      case 'rejectCandidate':
+        return srReject(
+          clientId,
+          clientSecret,
+          str(args, 'candidateExternalId'),
+          str(args, 'requisitionExternalId'),
+          strOpt(args, 'reasonId'),
+        );
+      case 'addCandidateTag':
+        throw new Error('SmartRecruiters does not support applying tags yet');
+      case 'addCandidateNote':
+        // Notes need a /messages/shares shareWith user ref we don't capture;
+        // capabilities().canAddNote is false so this isn't dispatched.
+        throw new Error('SmartRecruiters note writes are not supported yet');
     }
   }
   throw new Error(

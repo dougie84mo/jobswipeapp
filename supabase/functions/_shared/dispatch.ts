@@ -15,6 +15,7 @@ import { listCandidatesForRequisition as recruitee } from './recruitee.ts';
 import { listCandidatesForRequisition as teamtailor } from './teamtailor.ts';
 import { listCandidatesForRequisition as manatal } from './manatal.ts';
 import { listCandidatesForRequisition as bamboohr } from './bamboohr.ts';
+import { listCandidatesForRequisition as smartrecruiters } from './smartrecruiters.ts';
 
 function extrasStr(extras: Record<string, unknown>, key: string): string {
   const v = extras[key];
@@ -59,6 +60,14 @@ export function listCandidatesForProvider(
     case 'bamboohr':
       return bamboohr(
         extrasStr(extras, 'company_subdomain'),
+        apiKey,
+        requisitionExternalId,
+        cursor,
+      );
+    case 'smartrecruiters':
+      // OAuth client-credentials: client_id in extras, client_secret is apiKey.
+      return smartrecruiters(
+        extrasStr(extras, 'client_id'),
         apiKey,
         requisitionExternalId,
         cursor,

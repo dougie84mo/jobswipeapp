@@ -36,6 +36,7 @@ const CONNECTABLE_PROVIDERS: ProviderId[] = [
   'teamtailor',
   'manatal',
   'bamboohr',
+  'smartrecruiters',
 ];
 
 interface ProviderMeta {
@@ -110,9 +111,19 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   },
   smartrecruiters: {
     name: 'SmartRecruiters',
-    subtitle: 'Customer API • OAuth 2.0 (Marketplace app)',
-    ready: false,
-    authType: 'oauth',
+    subtitle: 'Customer API • OAuth 2.0 client credentials',
+    ready: true,
+    // OAuth client-credentials is server-to-server (no redirect), so we reuse
+    // the standard two-field form: the client secret is the encrypted Vault
+    // credential, the client id rides in extras.client_id.
+    authType: 'api_key',
+    apiKeyLabel: 'SmartRecruiters Client Secret',
+    apiKeyHint:
+      'Create an OAuth app with the client_credentials grant in SmartRecruiters (Settings → Apps & Integrations → Developer/API). Grant scopes to read jobs/candidates and update candidate status. The secret is stored encrypted; put the client id in the field below.',
+    extrasKey: 'client_id',
+    tenantLabel: 'SmartRecruiters Client ID',
+    tenantHint:
+      'The client_id from the same OAuth app. Stored as extras.client_id and exchanged with the secret for a bearer token at https://api.smartrecruiters.com/identity/oauth/token.',
   },
   workday: {
     name: 'Workday Recruiting',
@@ -463,7 +474,11 @@ export default function ConnectScreen() {
                         value={tenantInput}
                         onChangeText={setTenantInput}
                         placeholder={
-                          meta.extrasKey === 'company_id' ? 'e.g. 12345' : 'e.g. acme'
+                          meta.extrasKey === 'company_id'
+                            ? 'e.g. 12345'
+                            : meta.extrasKey === 'client_id'
+                            ? 'e.g. a1b2c3d4-...'
+                            : 'e.g. acme'
                         }
                         placeholderTextColor={theme.textSecondary}
                         style={[styles.input, { color: theme.text }]}

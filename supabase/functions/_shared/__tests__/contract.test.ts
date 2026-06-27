@@ -21,6 +21,7 @@ import * as recruitee from '../recruitee.ts';
 import * as teamtailor from '../teamtailor.ts';
 import * as manatal from '../manatal.ts';
 import * as bamboohr from '../bamboohr.ts';
+import * as smartrecruiters from '../smartrecruiters.ts';
 import { listCandidatesForProvider } from '../dispatch.ts';
 
 import {
@@ -30,6 +31,7 @@ import {
   lever as leverFx,
   manatal as manatalFx,
   recruitee as recruiteeFx,
+  smartrecruiters as srFx,
   teamtailor as ttFx,
   workable as workableFx,
 } from '../__fixtures__/responses.ts';
@@ -529,6 +531,62 @@ Deno.test('bamboohr: single-page cursor returns the next page number', async () 
     );
     assertPage(cands);
     assertEquals(cands.nextCursor, '2');
+  } finally {
+    restore();
+  }
+});
+
+// ============================================================================
+// SmartRecruiters (OAuth client-credentials; the token exchange is stubbed; the
+// ListResult `content`/`nextPageId` envelope; stages are a fixed constant)
+// ============================================================================
+Deno.test('smartrecruiters: reads emit valid normalized shapes', async () => {
+  const restore = installRouter([
+    { match: '/identity/oauth/token', body: srFx.token },
+    { match: '/candidates', body: srFx.candidates },
+    { match: '/jobs', body: srFx.jobs },
+  ]);
+  try {
+    const reqs = await smartrecruiters.listRequisitions('cid', 'secret');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, null);
+    reqs.items.forEach(assertRequisition);
+    assertEquals(reqs.items[0]!.externalId, 'job_sr1');
+    assertEquals(reqs.items[0]!.department, 'Engineering');
+    assertEquals(reqs.items[0]!.location, 'Berlin, de');
+
+    const cands = await smartrecruiters.listCandidatesForRequisition(
+      'cid',
+      'secret',
+      'job_sr1',
+    );
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    assertEquals(cands.items[0]!.externalId, 'cand_sr1');
+    assertEquals(cands.items[0]!.requisitionExternalId, 'job_sr1');
+    assertEquals(cands.items[0]!.fullName, 'Sven Sample');
+
+    // Stages are a fixed constant (no API call, no token needed).
+    const stages = await smartrecruiters.listStages();
+    stages.forEach(assertStage);
+    assertEquals(stages[0]!.id, 'LEAD');
+
+    const tags = await smartrecruiters.listTags();
+    assertEquals(tags.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('smartrecruiters: single-page cursor returns the nextPageId', async () => {
+  const restore = installRouter([
+    { match: '/identity/oauth/token', body: srFx.token },
+    { match: '/jobs', body: srFx.jobsHasNext },
+  ]);
+  try {
+    const reqs = await smartrecruiters.listRequisitions('cid', 'secret', '');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, 'PAGE_2');
   } finally {
     restore();
   }

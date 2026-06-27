@@ -1,22 +1,23 @@
 // SmartRecruiters adapter (in-app shell).
 //
-// SmartRecruiters Customer API uses OAuth 2.0 client credentials per
-// installed integration. Base URL: https://api.smartrecruiters.com. The
-// real Deno client will need a SmartRecruiters Marketplace listing or a
-// private OAuth app from a customer account before any HTTP can fire.
+// Real calls go through ats-proxy (see supabase/functions/_shared/
+// smartrecruiters.ts). This file ships capabilities() and metadata only.
 //
-// Capabilities reflect what SmartRecruiters exposes for sourced /
-// pipeline candidates:
-//   - advance stage: PUT /jobs/{jobId}/candidates/{candidateId}/status
-//   - reject: PATCH status to a "withdrawn"-class disposition
-//   - apply tag: POST candidate tags
-//   - add note: POST candidate notes
-//   - send message: candidate email via /messages
-//   - send template: email templates are surfaced via Customer API
+// Auth model: OAuth 2.0 client-credentials (the project's first OAuth provider).
+// The recruiter supplies a client_id + client_secret at connect time. To reuse
+// the existing connect form without an OAuth redirect: client_secret → Vault
+// (the credential), client_id → integrations.extras.client_id. The Deno client
+// exchanges them for a bearer token server-side.
+//
+// Capabilities reflect what the Customer API exposes today:
+//   - advance stage → PUT /candidates/{id}/jobs/{jobId}/status (main status)
+//   - reject        → same PUT with status=REJECTED
+// Deferred (capabilities() false):
+//   - notes:  the /messages/shares path needs a shareWith user reference we
+//             don't capture at connect time.
+//   - tags / messages / templates: no confirmed Customer API endpoints wired.
 
 import type { AtsAdapter } from '../../types';
-
-const NOT_IMPLEMENTED = 'smartrecruiters: adapter shell — Deno client not implemented yet';
 
 export const smartrecruitersAdapter: AtsAdapter = {
   providerId: 'smartrecruiters',
@@ -24,37 +25,39 @@ export const smartrecruitersAdapter: AtsAdapter = {
   authType: 'oauth2',
 
   beginAuth() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error('smartrecruiters.beginAuth: handled by ats-proxy');
   },
   completeAuth() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error('smartrecruiters.completeAuth: handled by ats-proxy');
   },
   testConnection() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error('smartrecruiters.testConnection: handled by ats-proxy');
   },
   listRequisitions() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error('smartrecruiters.listRequisitions: handled by ats-proxy');
   },
   listCandidatesForRequisition() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error(
+      'smartrecruiters.listCandidatesForRequisition: handled by ats-proxy',
+    );
   },
   getCandidate() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error('smartrecruiters.getCandidate: handled by ats-proxy');
   },
   capabilities() {
     return {
       canAdvanceStage: true,
       canReject: true,
-      canApplyTag: true,
-      canSendMessage: true,
-      canAddNote: true,
-      canSendTemplate: true,
+      canApplyTag: false,
+      canSendMessage: false,
+      canAddNote: false,
+      canSendTemplate: false,
     };
   },
   listStages() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error('smartrecruiters.listStages: handled by ats-proxy');
   },
   listTags() {
-    throw new Error(NOT_IMPLEMENTED);
+    throw new Error('smartrecruiters.listTags: handled by ats-proxy');
   },
 };
