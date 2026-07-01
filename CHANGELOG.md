@@ -8,8 +8,8 @@ and the per-adapter credential guide is `docs/ats-credentials-guide.md`.
 
 Adapter coverage at a glance: **10 live** (mock, greenhouse, ashby, lever,
 workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
-**2 shells** (icims, workday — partner-gated, deferred) · **2 partner-delegated**
-(indeed, ziprecruiter).
+**2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
+pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
 ## 2026-06-30 — JazzHR; iCIMS/Workday researched & deferred
 
@@ -19,17 +19,16 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
   pagination. Writes deferred (v1 write format unverified; no workflow-step list
   endpoint; no free sandbox). (`b1c7710`)
 
-### Changed
-- **iCIMS** and **Workday** are the last two shells and are **deliberately
-  deferred, not built blind.** Both are partner-gated (no verification path) and
-  their read shapes aren't publicly documented — iCIMS is POST search-then-fetch
-  with undocumented object fields; Workday's recruiting API points to 3-legged
-  Authorization Code auth + an undocumented candidate endpoint. Building them
-  speculatively would produce self-referential tests that validate nothing.
-  Captured the exact auth models + build blockers in their shell headers and
-  `docs/ats-credentials-guide.md` (Tier 4) so they're a fast follow once partner
-  sandbox access lands. iCIMS will reuse the SmartRecruiters client-credentials
-  pattern (needs a 3rd connect field); Workday needs a real OAuth redirect flow.
+- **iCIMS** and **Workday** — **experimental read scaffolds** built (at explicit
+  request) but kept **`ready:false`** (not connectable). Both are partner-gated
+  with undocumented read shapes, so the clients are best-effort guesses whose
+  contract tests validate normalization against *authored* fixtures only — they
+  do **not** prove the shapes match real providers. iCIMS: client-credentials +
+  search-then-fetch with defensive field mapping. Workday: `GET /jobRequisitions`
+  + a placeholder client-credentials token (real auth is likely 3-legged) + a
+  guessed candidates endpoint. Added a shared `fetchClientCredentialsToken()`
+  OAuth helper. Must be verified against a partner sandbox before going live.
+  (`74b8596`)
 
 ## 2026-06-26 — BambooHR + SmartRecruiters (first OAuth)
 See `docs/2026-06-adapters-oauth-session.md`.
