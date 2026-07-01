@@ -16,6 +16,7 @@ import { listCandidatesForRequisition as teamtailor } from './teamtailor.ts';
 import { listCandidatesForRequisition as manatal } from './manatal.ts';
 import { listCandidatesForRequisition as bamboohr } from './bamboohr.ts';
 import { listCandidatesForRequisition as smartrecruiters } from './smartrecruiters.ts';
+import { listCandidatesForRequisition as jazzhr } from './jazzhr.ts';
 
 function extrasStr(extras: Record<string, unknown>, key: string): string {
   const v = extras[key];
@@ -72,6 +73,8 @@ export function listCandidatesForProvider(
         requisitionExternalId,
         cursor,
       );
+    case 'jazzhr':
+      return jazzhr(apiKey, requisitionExternalId, cursor);
     default:
       throw new Error(`dispatch: unsupported provider "${provider}"`);
   }

@@ -111,6 +111,13 @@ import {
   testConnection as srTestConnection,
   updateStatus as srUpdateStatus,
 } from '../_shared/smartrecruiters.ts';
+import {
+  listCandidatesForRequisition as jazzhrListCandidates,
+  listRequisitions as jazzhrListRequisitions,
+  listStages as jazzhrListStages,
+  listTags as jazzhrListTags,
+  testConnection as jazzhrTestConnection,
+} from '../_shared/jazzhr.ts';
 
 type Method =
   | 'testConnection'
@@ -795,6 +802,26 @@ async function dispatch(
         // Notes need a /messages/shares shareWith user ref we don't capture;
         // capabilities().canAddNote is false so this isn't dispatched.
         throw new Error('SmartRecruiters note writes are not supported yet');
+    }
+  }
+  if (provider === 'jazzhr') {
+    // Reads only — writes deferred (see _shared/jazzhr.ts); capabilities() are
+    // all false so no write is dispatched.
+    switch (method) {
+      case 'testConnection':
+        return jazzhrTestConnection(apiKey);
+      case 'listRequisitions':
+        return jazzhrListRequisitions(apiKey, cursorArg(args));
+      case 'listCandidatesForRequisition':
+        return jazzhrListCandidates(
+          apiKey,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
+      case 'listStages':
+        return jazzhrListStages(apiKey, str(args, 'requisitionExternalId'));
+      case 'listTags':
+        return jazzhrListTags(apiKey);
     }
   }
   throw new Error(

@@ -22,12 +22,14 @@ import * as teamtailor from '../teamtailor.ts';
 import * as manatal from '../manatal.ts';
 import * as bamboohr from '../bamboohr.ts';
 import * as smartrecruiters from '../smartrecruiters.ts';
+import * as jazzhr from '../jazzhr.ts';
 import { listCandidatesForProvider } from '../dispatch.ts';
 
 import {
   ashby as ashbyFx,
   bamboohr as bamboohrFx,
   greenhouse as ghFx,
+  jazzhr as jazzhrFx,
   lever as leverFx,
   manatal as manatalFx,
   recruitee as recruiteeFx,
@@ -587,6 +589,51 @@ Deno.test('smartrecruiters: single-page cursor returns the nextPageId', async ()
     const reqs = await smartrecruiters.listRequisitions('cid', 'secret', '');
     assertPage(reqs);
     assertEquals(reqs.nextCursor, 'PAGE_2');
+  } finally {
+    restore();
+  }
+});
+
+// ============================================================================
+// JazzHR (apikey query param; bare JSON arrays; read-only; open-job filter)
+// ============================================================================
+Deno.test('jazzhr: reads emit valid normalized shapes', async () => {
+  const restore = installRouter([
+    { match: '/applicants', body: jazzhrFx.applicants },
+    { match: '/jobs', body: jazzhrFx.jobs },
+  ]);
+  try {
+    const reqs = await jazzhr.listRequisitions('k');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, null);
+    reqs.items.forEach(assertRequisition);
+    // The non-open (Filled) job is filtered out.
+    assertEquals(reqs.items.length, 1);
+    assertEquals(reqs.items[0]!.externalId, 'job_jz1');
+    assertEquals(reqs.items[0]!.location, 'Austin, TX');
+
+    const cands = await jazzhr.listCandidatesForRequisition('k', 'job_jz1');
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    assertEquals(cands.items[0]!.externalId, 'app_jz1');
+    assertEquals(cands.items[0]!.requisitionExternalId, 'job_jz1');
+    assertEquals(cands.items[0]!.fullName, 'Jaz Sample');
+
+    // Read-only: no stage/tag vocab endpoints.
+    assertEquals((await jazzhr.listStages('k', 'job_jz1')).length, 0);
+    assertEquals((await jazzhr.listTags('k')).length, 0);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('jazzhr: single-page cursor returns null under a full page', async () => {
+  const restore = installRouter([{ match: '/jobs', body: jazzhrFx.jobs }]);
+  try {
+    // The fixture is under the 100-row page size, so there's no next page.
+    const reqs = await jazzhr.listRequisitions('k', '');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, null);
   } finally {
     restore();
   }

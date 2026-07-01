@@ -382,3 +382,31 @@ export const smartrecruiters = {
     totalFound: 1,
   },
 };
+
+// ============================================================================
+// JazzHR (Resumator; apikey query param; bare JSON arrays; /page/{n}
+// pagination). String ids. Read-only client — candidate externalId is the
+// applicant id. Non-open jobs are filtered out of sourcing.
+// ============================================================================
+export const jazzhr = {
+  jobs: [
+    {
+      id: 'job_jz1',
+      title: 'Sales Manager',
+      status: 'Open',
+      department: 'Sales',
+      city: 'Austin',
+      state: 'TX',
+    },
+    { id: 'job_jz2', title: 'Filled Role', status: 'Filled' },
+  ],
+  applicants: [
+    {
+      id: 'app_jz1',
+      first_name: 'Jaz',
+      last_name: 'Sample',
+      job_id: 'job_jz1',
+      job_title: 'Sales Manager',
+    },
+  ],
+};

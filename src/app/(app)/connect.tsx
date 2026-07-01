@@ -37,6 +37,7 @@ const CONNECTABLE_PROVIDERS: ProviderId[] = [
   'manatal',
   'bamboohr',
   'smartrecruiters',
+  'jazzhr',
 ];
 
 interface ProviderMeta {
@@ -146,9 +147,12 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
   },
   jazzhr: {
     name: 'JazzHR',
-    subtitle: 'Resumator API • API key (Pro plan or higher)',
-    ready: false,
+    subtitle: 'Resumator API • API key • sourcing (read-only)',
+    ready: true,
     authType: 'api_key',
+    apiKeyLabel: 'JazzHR API key',
+    apiKeyHint:
+      'Settings → Integrations → API (Pro plan or higher). Read-only for now: candidates flow into the deck and swipes record locally; write-back is deferred until confirmed against a Pro account.',
   },
   recruitee: {
     name: 'Recruitee',
