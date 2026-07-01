@@ -23,12 +23,15 @@ import * as manatal from '../manatal.ts';
 import * as bamboohr from '../bamboohr.ts';
 import * as smartrecruiters from '../smartrecruiters.ts';
 import * as jazzhr from '../jazzhr.ts';
+import * as icims from '../icims.ts';
+import * as workday from '../workday.ts';
 import { listCandidatesForProvider } from '../dispatch.ts';
 
 import {
   ashby as ashbyFx,
   bamboohr as bamboohrFx,
   greenhouse as ghFx,
+  icims as icimsFx,
   jazzhr as jazzhrFx,
   lever as leverFx,
   manatal as manatalFx,
@@ -36,6 +39,7 @@ import {
   smartrecruiters as srFx,
   teamtailor as ttFx,
   workable as workableFx,
+  workday as workdayFx,
 } from '../__fixtures__/responses.ts';
 
 // ============================================================================
@@ -634,6 +638,86 @@ Deno.test('jazzhr: single-page cursor returns null under a full page', async () 
     const reqs = await jazzhr.listRequisitions('k', '');
     assertPage(reqs);
     assertEquals(reqs.nextCursor, null);
+  } finally {
+    restore();
+  }
+});
+
+// ============================================================================
+// iCIMS + Workday — ⚠️ EXPERIMENTAL scaffolds (ready:false). These tests only
+// prove our normalization is internally consistent against AUTHORED fixtures;
+// they do NOT validate against real provider responses (see the client headers).
+// ============================================================================
+Deno.test('icims (experimental): reads normalize search-then-fetch', async () => {
+  const restore = installRouter([
+    { match: 'oauth/token', body: icimsFx.token },
+    { match: '/search/jobs', body: icimsFx.jobsSearch },
+    {
+      match: '/search/applicantworkflows',
+      body: icimsFx.applicantWorkflowsSearch,
+    },
+    { match: '/applicantworkflows/', body: icimsFx.applicantWorkflow },
+    { match: '/jobs/', body: icimsFx.job },
+  ]);
+  try {
+    const reqs = await icims.listRequisitions('cid', 'secret', 'cust1');
+    assertPage(reqs);
+    reqs.items.forEach(assertRequisition);
+    assertEquals(reqs.items[0]!.externalId, '90001'); // numeric -> string
+    assertEquals(reqs.items[0]!.title, 'Data Engineer');
+
+    const cands = await icims.listCandidatesForRequisition(
+      'cid',
+      'secret',
+      'cust1',
+      '90001',
+    );
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    assertEquals(cands.items[0]!.externalId, '70001');
+    assertEquals(cands.items[0]!.fullName, 'Ida Sample');
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('workday (experimental): reads normalize the {data,total} envelope', async () => {
+  const restore = installRouter([
+    { match: 'oauth2/token', body: workdayFx.token },
+    { match: '/candidates', body: workdayFx.candidates },
+    { match: '/jobRequisitions', body: workdayFx.jobRequisitions },
+  ]);
+  try {
+    const reqs = await workday.listRequisitions('cid', 'secret', 'acme');
+    assertPage(reqs);
+    assertEquals(reqs.nextCursor, null);
+    reqs.items.forEach(assertRequisition);
+    assertEquals(reqs.items[0]!.externalId, 'req_wd1');
+    assertEquals(reqs.items[0]!.title, 'Software Engineer');
+
+    const cands = await workday.listCandidatesForRequisition(
+      'cid',
+      'secret',
+      'acme',
+      'req_wd1',
+    );
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    assertEquals(cands.items[0]!.externalId, 'cand_wd1');
+    assertEquals(cands.items[0]!.fullName, 'Wanda Sample');
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('workday (experimental): offset cursor advances while more remain', async () => {
+  const restore = installRouter([
+    { match: 'oauth2/token', body: workdayFx.token },
+    { match: '/jobRequisitions', body: workdayFx.jobRequisitionsHasNext },
+  ]);
+  try {
+    const reqs = await workday.listRequisitions('cid', 'secret', 'acme', '');
+    assertEquals(reqs.nextCursor, '100'); // total 250 > offset+limit
   } finally {
     restore();
   }

@@ -118,6 +118,23 @@ import {
   listTags as jazzhrListTags,
   testConnection as jazzhrTestConnection,
 } from '../_shared/jazzhr.ts';
+// ⚠️ EXPERIMENTAL / ready:false — iCIMS + Workday are unverified scaffolds (not
+// in CONNECTABLE_PROVIDERS, so these dispatch cases are unreachable until a
+// partner sandbox confirms the shapes). Wired for reads only.
+import {
+  listCandidatesForRequisition as icimsListCandidates,
+  listRequisitions as icimsListRequisitions,
+  listStages as icimsListStages,
+  listTags as icimsListTags,
+  testConnection as icimsTestConnection,
+} from '../_shared/icims.ts';
+import {
+  listCandidatesForRequisition as workdayListCandidates,
+  listRequisitions as workdayListRequisitions,
+  listStages as workdayListStages,
+  listTags as workdayListTags,
+  testConnection as workdayTestConnection,
+} from '../_shared/workday.ts';
 
 type Method =
   | 'testConnection'
@@ -822,6 +839,94 @@ async function dispatch(
         return jazzhrListStages(apiKey, str(args, 'requisitionExternalId'));
       case 'listTags':
         return jazzhrListTags(apiKey);
+    }
+  }
+  if (provider === 'icims') {
+    // ⚠️ EXPERIMENTAL scaffold (ready:false). client_secret is the Vault
+    // credential; client_id + customer_id ride in extras.
+    const clientId = typeof extras.client_id === 'string'
+      ? extras.client_id
+      : '';
+    const customerId = typeof extras.customer_id === 'string'
+      ? extras.customer_id
+      : '';
+    if (!clientId || !customerId) {
+      throw new Error(
+        'iCIMS integration is missing extras.client_id / extras.customer_id.',
+      );
+    }
+    const clientSecret = apiKey;
+    switch (method) {
+      case 'testConnection':
+        return icimsTestConnection(clientId, clientSecret, customerId);
+      case 'listRequisitions':
+        return icimsListRequisitions(
+          clientId,
+          clientSecret,
+          customerId,
+          cursorArg(args),
+        );
+      case 'listCandidatesForRequisition':
+        return icimsListCandidates(
+          clientId,
+          clientSecret,
+          customerId,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
+      case 'listStages':
+        return icimsListStages(
+          clientId,
+          clientSecret,
+          customerId,
+          str(args, 'requisitionExternalId'),
+        );
+      case 'listTags':
+        return icimsListTags(clientId, clientSecret, customerId);
+    }
+  }
+  if (provider === 'workday') {
+    // ⚠️ EXPERIMENTAL scaffold (ready:false). client_secret is the Vault
+    // credential; client_id + tenant ride in extras.
+    const clientId = typeof extras.client_id === 'string'
+      ? extras.client_id
+      : '';
+    const tenant = typeof extras.tenant_subdomain === 'string'
+      ? extras.tenant_subdomain
+      : '';
+    if (!clientId || !tenant) {
+      throw new Error(
+        'Workday integration is missing extras.client_id / extras.tenant_subdomain.',
+      );
+    }
+    const clientSecret = apiKey;
+    switch (method) {
+      case 'testConnection':
+        return workdayTestConnection(clientId, clientSecret, tenant);
+      case 'listRequisitions':
+        return workdayListRequisitions(
+          clientId,
+          clientSecret,
+          tenant,
+          cursorArg(args),
+        );
+      case 'listCandidatesForRequisition':
+        return workdayListCandidates(
+          clientId,
+          clientSecret,
+          tenant,
+          str(args, 'requisitionExternalId'),
+          cursorArg(args),
+        );
+      case 'listStages':
+        return workdayListStages(
+          clientId,
+          clientSecret,
+          tenant,
+          str(args, 'requisitionExternalId'),
+        );
+      case 'listTags':
+        return workdayListTags(clientId, clientSecret, tenant);
     }
   }
   throw new Error(

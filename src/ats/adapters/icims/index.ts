@@ -6,13 +6,17 @@
 // client id/secret AND the customer id (extras.customer_id) — three inputs, so
 // the current two-field connect form isn't sufficient yet.
 //
-// DEFERRED (still a shell) — not built blind because: (1) partner-gated (sandbox
-// only after approval + a video validation step); (2) the read model is
-// search-then-fetch (POST /customers/{id}/search/{jobs,applicantworkflows}
-// returns ids, then GET each object) and the object FIELD shapes aren't publicly
-// documented, so title/name mapping would be guesswork. Build once partner
-// sandbox access lands. Auth reuses the SmartRecruiters client-credentials
-// pattern; see docs/ats-credentials-guide.md.
+// STATUS: an EXPERIMENTAL Deno scaffold exists at
+// supabase/functions/_shared/icims.ts, but this adapter stays ready:false (not
+// connectable) because it's UNVERIFIED. iCIMS is partner-gated (sandbox only
+// after approval + a video validation step), its read model is search-then-fetch
+// (POST /customers/{id}/search/{jobs,applicantworkflows} → ids, then GET each),
+// and the object FIELD shapes aren't publicly documented — so the scaffold's
+// field mapping is best-effort guesswork validated only against authored
+// fixtures. Confirm against a partner sandbox before flipping to ready:true; the
+// connect form also needs a 3rd field (client id/secret + customer id). Auth
+// reuses the SmartRecruiters client-credentials pattern; see
+// docs/ats-credentials-guide.md.
 //
 // Capabilities reflect what iCIMS exposes for candidates / applicants:
 //   - advance stage: workflow / status transitions on applicantworkflow
@@ -25,7 +29,8 @@
 
 import type { AtsAdapter } from '../../types';
 
-const NOT_IMPLEMENTED = 'icims: adapter shell — Deno client not implemented yet';
+const NOT_IMPLEMENTED =
+  'icims: experimental scaffold (ready:false) — real calls route through ats-proxy';
 
 export const icimsAdapter: AtsAdapter = {
   providerId: 'icims',

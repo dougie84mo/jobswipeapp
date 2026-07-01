@@ -189,3 +189,51 @@ export async function pooledMap<T, R>(
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
   return results;
 }
+
+/**
+ * OAuth 2.0 client-credentials token exchange: POST form-urlencoded
+ * `grant_type=client_credentials` + client_id/secret to `tokenUrl`, return the
+ * `access_token`. Shared by the OAuth ATS clients (iCIMS / Workday; the older
+ * SmartRecruiters client keeps its own inline copy). `extraParams` covers
+ * provider quirks (e.g. a `scope`). Throws HttpError (PII-free — never includes
+ * the response body, which can echo the submitted credentials) on non-2xx.
+ *
+ * We hand-roll the POST instead of reusing callWrite because callWrite always
+ * JSON-stringifies the body, and token endpoints want form encoding.
+ */
+export async function fetchClientCredentialsToken(
+  tokenUrl: string,
+  clientId: string,
+  clientSecret: string,
+  provider: string,
+  extraParams: Record<string, string> = {},
+): Promise<string> {
+  const form = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: clientId,
+    client_secret: clientSecret,
+    ...extraParams,
+  });
+  const res = await fetchWithBackoff(tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+    },
+    body: form.toString(),
+  });
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new HttpError(
+      provider,
+      `POST ${tokenUrl}`,
+      res.status,
+      res.statusText,
+    );
+  }
+  const json = (await res.json()) as { access_token?: string };
+  if (!json.access_token) {
+    throw new Error(`${provider}: token response missing access_token`);
+  }
+  return json.access_token;
+}

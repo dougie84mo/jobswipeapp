@@ -6,14 +6,16 @@
 // surface) for jobs / candidates / dispositions. The connect flow will need the
 // tenant (extras.tenant_subdomain) alongside the OAuth client.
 //
-// DEFERRED (still a shell) — not built blind because: (1) partner-gated (ISV
-// agreement + revenue share; no pre-deal sandbox — the tenant comes from a
-// customer); (2) the recruiting REST API points to the 3-legged Authorization
-// Code grant (needs an app-side OAuth redirect/onboarding flow we don't have —
-// the ats-oauth-callback stub is the placeholder), not client-credentials; and
-// (3) the candidate-retrieval endpoint + response fields aren't publicly
-// documented (GET /jobRequisitions is, candidates aren't). Build once a customer
-// tenant + partner access land.
+// STATUS: an EXPERIMENTAL Deno scaffold exists at
+// supabase/functions/_shared/workday.ts, but this adapter stays ready:false (not
+// connectable) because it's UNVERIFIED on two counts: (1) auth — the recruiting
+// REST API points to the 3-legged Authorization Code grant (needs an app-side
+// OAuth redirect flow we don't have — ats-oauth-callback is the stub); the
+// scaffold uses a client-credentials token exchange as a PLACEHOLDER; and (2) the
+// candidate-retrieval endpoint + fields aren't publicly documented (GET
+// /jobRequisitions is; candidates aren't). Partner-gated (ISV agreement; no
+// pre-deal sandbox — tenant comes from a customer). Confirm against a real tenant
+// before flipping to ready:true.
 //
 // Capabilities reflect what's commonly modelled in Workday Recruiting:
 //   - advance stage: PUT candidate disposition / stage on the
@@ -27,7 +29,8 @@
 
 import type { AtsAdapter } from '../../types';
 
-const NOT_IMPLEMENTED = 'workday: adapter shell — Deno client not implemented yet';
+const NOT_IMPLEMENTED =
+  'workday: experimental scaffold (ready:false) — real calls route through ats-proxy';
 
 export const workdayAdapter: AtsAdapter = {
   providerId: 'workday',

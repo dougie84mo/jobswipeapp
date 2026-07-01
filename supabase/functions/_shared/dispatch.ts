@@ -17,6 +17,9 @@ import { listCandidatesForRequisition as manatal } from './manatal.ts';
 import { listCandidatesForRequisition as bamboohr } from './bamboohr.ts';
 import { listCandidatesForRequisition as smartrecruiters } from './smartrecruiters.ts';
 import { listCandidatesForRequisition as jazzhr } from './jazzhr.ts';
+// ⚠️ EXPERIMENTAL scaffolds (ready:false) — see the client file headers.
+import { listCandidatesForRequisition as icims } from './icims.ts';
+import { listCandidatesForRequisition as workday } from './workday.ts';
 
 function extrasStr(extras: Record<string, unknown>, key: string): string {
   const v = extras[key];
@@ -75,6 +78,22 @@ export function listCandidatesForProvider(
       );
     case 'jazzhr':
       return jazzhr(apiKey, requisitionExternalId, cursor);
+    case 'icims':
+      return icims(
+        extrasStr(extras, 'client_id'),
+        apiKey,
+        extrasStr(extras, 'customer_id'),
+        requisitionExternalId,
+        cursor,
+      );
+    case 'workday':
+      return workday(
+        extrasStr(extras, 'client_id'),
+        apiKey,
+        extrasStr(extras, 'tenant_subdomain'),
+        requisitionExternalId,
+        cursor,
+      );
     default:
       throw new Error(`dispatch: unsupported provider "${provider}"`);
   }

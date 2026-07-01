@@ -410,3 +410,48 @@ export const jazzhr = {
     },
   ],
 };
+
+// ============================================================================
+// iCIMS — ⚠️ SPECULATIVE fixtures for the EXPERIMENTAL scaffold. These shapes
+// are AUTHORED guesses (iCIMS object fields aren't publicly documented), so the
+// contract test only proves our normalization is internally consistent, NOT
+// that it matches real iCIMS. Search-then-fetch; numeric ids -> stringify.
+// ============================================================================
+export const icims = {
+  token: { access_token: 'tkn_icims', token_type: 'bearer', expires_in: 3600 },
+  jobsSearch: {
+    searchResults: [{ id: 90001, url: 'https://api.icims.test/j' }],
+  },
+  job: {
+    jobtitle: 'Data Engineer',
+    department: { value: 'Engineering' },
+    joblocation: { value: 'Remote' },
+  },
+  applicantWorkflowsSearch: { searchResults: [{ id: 70001 }] },
+  applicantWorkflow: {
+    firstname: 'Ida',
+    lastname: 'Sample',
+    associatedprofile: { id: 5 },
+  },
+};
+
+// ============================================================================
+// Workday — ⚠️ SPECULATIVE fixtures for the EXPERIMENTAL scaffold. The candidate
+// endpoint/fields are AUTHORED guesses; auth is a placeholder. { data, total }
+// envelope with { id, descriptor } instances; offset/limit pagination.
+// ============================================================================
+export const workday = {
+  token: { access_token: 'tkn_wd', token_type: 'bearer', expires_in: 3600 },
+  jobRequisitions: {
+    data: [{ id: 'req_wd1', descriptor: 'Software Engineer' }],
+    total: 1,
+  },
+  jobRequisitionsHasNext: {
+    data: [{ id: 'req_wd1', descriptor: 'Software Engineer' }],
+    total: 250,
+  },
+  candidates: {
+    data: [{ id: 'cand_wd1', descriptor: 'Wanda Sample' }],
+    total: 1,
+  },
+};
