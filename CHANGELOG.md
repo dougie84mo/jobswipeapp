@@ -11,6 +11,20 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-01 — Full adapter audit + status snapshot
+
+### Added
+- `docs/adapter-status.md` — single-source status snapshot from a full codebase
+  audit: the adapter matrix across all layers, per-provider sandbox unknowns, the
+  architecture cheat-sheet, and what's left. The "resume here" doc.
+
+### Notes
+- Audit confirmed **nothing is missing or orphaned**: 15 providers consistent
+  across adapter/registry/types/connect/proxy/dispatch; 11 connectable ==
+  11 `ready:true`; iCIMS/Workday `ready:false` scaffolds; Indeed/ZipRecruiter
+  delegated shells. No adapter is yet verified against a real provider API
+  (contract tests are synthetic) — sandbox verification is the top open item.
+
 ## 2026-06-30 — JazzHR; iCIMS/Workday researched & deferred
 
 ### Added
