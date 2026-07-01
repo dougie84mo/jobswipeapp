@@ -127,21 +127,37 @@ Adapters are built; you just need access to an account with API enabled.
 - **Access:** Plan gate is **unconfirmed** (docs conflict between all-plans vs
   Pro+). Confirm before assuming Pro.
 - **Where:** https://apidoc.jazzhrapis.com/. Base `api.resumatorapi.com/v1`.
-  Adapter is a shell — Deno client not built yet.
+  Adapter is **live but read-only** — sourcing works and swipes record locally;
+  write-back (advance/note) is deferred until the POST format is confirmed
+  against a Pro account (sources conflict on apikey placement + body format).
 
 ---
 
 ## Tier 4 — Partner-gated (long lead; OAuth + agreements)
 
-Start these early because approval takes weeks. Adapters are shells.
+Start these early because approval takes weeks. Adapters are **shells** — and
+they're deliberately **not built blind** (unlike the others, their read shapes
+aren't publicly documented, so a speculative client couldn't be validated). Each
+needs partner sandbox access before its Deno client is worth writing.
 
-- **iCIMS** — Partner/Marketplace, OAuth 2.0 + customer id. Sandbox only after
-  approval + a video validation step. Apply:
-  https://partnerportal.icims.com/partners/s/apply (DeveloperHelp@icims.com).
-  The per-customer User Request Form is a lighter path than full partnership.
-- **Workday** — Workday Innovation Partners (ISV), OAuth 2.0 + tenant. No
-  pre-deal sandbox (tenant comes from a customer); revenue-share agreement.
+- **iCIMS** — OAuth 2.0 **client-credentials** (region auth servers
+  `login.icims{.com,.eu,.ca}/oauth`) + **customer id**. Three inputs (client
+  id/secret + customer id), so the connect form needs a third field. Sandbox
+  only after approval + a video validation step. Apply:
+  https://partnerportal.icims.com/partners/s/apply (DeveloperHelp@icims.com);
+  the per-customer User Request Form is a lighter path than full partnership.
+  **Build blocker beyond access:** the read model is search-then-fetch (`POST
+  /customers/{id}/search/{jobs,applicantworkflows}` → ids, then `GET` each) and
+  the object field shapes aren't public — needs sandbox to map. Auth will reuse
+  the SmartRecruiters client-credentials pattern.
+- **Workday** — Workday Innovation Partners (ISV), OAuth 2.0 + **tenant**. Base
+  `https://{tenant}.workday.com/ccx/api/recruiting/vNN/`. No pre-deal sandbox
+  (tenant comes from a customer); revenue-share agreement.
   https://workday.my.site.com/prospectportal/become-a-partner. Weeks-to-months.
+  **Build blocker beyond access:** the recruiting REST API points to the
+  **3-legged Authorization Code grant** (needs an app-side OAuth redirect flow we
+  don't have — `ats-oauth-callback` is the stub), and the candidate-retrieval
+  endpoint/fields aren't publicly documented (`GET /jobRequisitions` is).
 
 ## Delegated — do not self-serve here
 
@@ -156,8 +172,12 @@ Start these early because approval takes weeks. Adapters are shells.
 ## Suggested order of attack
 
 1. **BambooHR** sandbox (free, adapter live) — verify writes end to end.
-2. **Lever** sandbox (free, adapter live) — second real-write validation.
-3. **Recruitee** / **Workable** trials (free, adapters live) — broaden coverage.
-4. **SmartRecruiters** sandbox (free) — unblocks building the first OAuth adapter.
-5. Kick off **iCIMS** / **Workday** partner applications in parallel (long lead).
-6. **Greenhouse** / **Ashby** / **Teamtailor** when a customer account is available.
+2. **SmartRecruiters** sandbox (free, adapter live) — verify the first OAuth
+   client + confirm the flagged unknowns (candidates path, pageId, status tokens).
+3. **Lever** sandbox (free, adapter live) — second real-write validation.
+4. **Recruitee** / **Workable** trials (free, adapters live) — broaden coverage.
+5. **JazzHR** (Pro account) — confirm the POST format to promote it past
+   read-only.
+6. Kick off **iCIMS** / **Workday** partner applications in parallel (long lead) —
+   their Deno clients wait on sandbox access.
+7. **Greenhouse** / **Ashby** / **Teamtailor** when a customer account is available.

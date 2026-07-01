@@ -1,9 +1,18 @@
 // iCIMS adapter (in-app shell).
 //
-// iCIMS Talent Cloud uses OAuth 2.0 client credentials per integration,
-// with a customer-specific subdomain (e.g. api.icims.com/customers/{id}).
-// The connect flow will need both a client id/secret and the customer id
-// (stored at integrations.extras.customer_id).
+// iCIMS Talent Cloud uses OAuth 2.0 client credentials (region-specific auth
+// servers: login.icims{.com,.eu,.ca}/oauth), with a customer-specific path
+// (api.icims.com/customers/{customerId}/...). The connect flow will need a
+// client id/secret AND the customer id (extras.customer_id) — three inputs, so
+// the current two-field connect form isn't sufficient yet.
+//
+// DEFERRED (still a shell) — not built blind because: (1) partner-gated (sandbox
+// only after approval + a video validation step); (2) the read model is
+// search-then-fetch (POST /customers/{id}/search/{jobs,applicantworkflows}
+// returns ids, then GET each object) and the object FIELD shapes aren't publicly
+// documented, so title/name mapping would be guesswork. Build once partner
+// sandbox access lands. Auth reuses the SmartRecruiters client-credentials
+// pattern; see docs/ats-credentials-guide.md.
 //
 // Capabilities reflect what iCIMS exposes for candidates / applicants:
 //   - advance stage: workflow / status transitions on applicantworkflow
