@@ -14,6 +14,10 @@ pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 ## 2026-07-01 — Full adapter audit + status snapshot
 
 ### Added
+- `docs/next-session-kickoff.md` — a paste-ready kickoff prompt + reference for
+  the next phase: connecting real ATS APIs. Priority order of self-serve
+  sandboxes (BambooHR → SmartRecruiters → Lever), what creds each needs, the
+  blocked/delegated set, and the per-provider verification loop.
 - `docs/adapter-status.md` — single-source status snapshot from a full codebase
   audit: the adapter matrix across all layers, per-provider sandbox unknowns, the
   architecture cheat-sheet, and what's left. The "resume here" doc.
