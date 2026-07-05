@@ -52,6 +52,17 @@ export default function ConnectionsScreen() {
             {email ? (
               <ThemedText themeColor="textSecondary">Signed in as {email}</ThemedText>
             ) : null}
+            <Pressable
+              onPress={() => router.push('/connect')}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <ThemedText style={styles.primaryButtonText}>
+                Connect a source
+              </ThemedText>
+            </Pressable>
           </View>
 
           {integrationsQuery.isLoading ? (
@@ -64,9 +75,9 @@ export default function ConnectionsScreen() {
             <ThemedView type="backgroundElement" style={styles.empty}>
               <ThemedText type="smallBold">No sources connected yet</ThemedText>
               <ThemedText themeColor="textSecondary">
-                Open the Profile tab and tap Connect a source to add your first
-                ATS or job board. The mock provider has demo data so you can try
-                the swipe deck without a real account.
+                Tap Connect a source to add your first ATS or job board. The
+                mock provider has demo data so you can try the swipe deck
+                without a real account.
               </ThemedText>
             </ThemedView>
           ) : (
@@ -142,7 +153,14 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
     paddingBottom: Spacing.six,
   },
-  header: { gap: Spacing.one },
+  header: { gap: Spacing.two },
+  primaryButton: {
+    backgroundColor: '#208AEF',
+    paddingVertical: Spacing.three,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  primaryButtonText: { color: 'white', fontWeight: '700' },
   group: { gap: Spacing.two },
   empty: {
     padding: Spacing.four,
