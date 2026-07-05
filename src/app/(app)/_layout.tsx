@@ -39,6 +39,10 @@ export default function AppLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="connect" options={{ title: 'Connect a source' }} />
         <Stack.Screen name="settings/profile" options={{ title: 'Profile' }} />
+        <Stack.Screen name="settings/account" options={{ title: 'Account settings' }} />
+        <Stack.Screen name="settings/preferences" options={{ title: 'Preferences' }} />
+        <Stack.Screen name="settings/subscriptions" options={{ title: 'Subscriptions' }} />
+        <Stack.Screen name="settings/team" options={{ title: 'Recruit Team' }} />
         <Stack.Screen name="candidate/[swipeId]" options={{ title: 'Candidate' }} />
         <Stack.Screen name="integration/[id]/index" options={{ title: 'Integration' }} />
         <Stack.Screen name="integration/[id]/settings" options={{ title: 'Swipe actions' }} />

@@ -11,6 +11,30 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-05 — Settings becomes a navigation hub
+
+### Added
+- **`/settings/preferences`** — push-notification + swipe-gesture switches
+  moved off the tab onto their own page.
+- **`/settings/account`** — account credentials page: email + change
+  password (via `updatePassword`; the earlier flagged follow-up). Name/org
+  stays on `/settings/profile`.
+- **`/settings/subscriptions`** (stub) — "Free — early access" plan card +
+  billing-coming-soon copy. Clean extension point; billing itself stays out
+  of scope.
+- **`/settings/team`** (stub) — Recruit Team teaser (invites, shared
+  sources, requisition assignment). Multi-recruiter features stay out of
+  scope; this is the landing spot.
+- `src/components/settings-list.tsx` — `SettingsGroup` / `NavRow` /
+  `SwitchRow` / `RowDivider` extracted from the Settings tab so all
+  settings pages share the same grouped-list primitives.
+
+### Changed
+- **Settings tab is now a pure navigation list**: Account → Profile /
+  Account settings / Recruit Team; Sources → Connect a source; App →
+  Preferences / Subscriptions; Sign out. Inline switches moved to the
+  Preferences page.
+
 ## 2026-07-04 — Candidates tab + Settings restructure
 
 ### Added
