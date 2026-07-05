@@ -92,7 +92,16 @@ export default function SignInScreen() {
       setMode('otp-verify');
       Alert.alert('Code sent', `Check ${email.trim()} for a 6-digit code.`);
     } catch (err) {
-      Alert.alert('Could not send code', toMessage(err));
+      // sendEmailOtp uses shouldCreateUser: false, so an unknown email comes
+      // back as an "otp_disabled / signups not allowed" error — translate it.
+      const raw = toMessage(err);
+      const noAccount = /signups not allowed/i.test(raw);
+      Alert.alert(
+        noAccount ? 'No account found' : 'Could not send code',
+        noAccount
+          ? `There's no account for ${email.trim()}. Create one from the sign-up screen first.`
+          : raw,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -167,6 +176,11 @@ export default function SignInScreen() {
               >
                 <ThemedText type="linkPrimary">Email me a code instead</ThemedText>
               </Pressable>
+              <Link href="/reset-password" asChild>
+                <Pressable disabled={submitting}>
+                  <ThemedText type="linkPrimary">Forgot password?</ThemedText>
+                </Pressable>
+              </Link>
               <ThemedText themeColor="textSecondary" style={styles.footnote}>
                 Don&apos;t have an account?{' '}
                 <Link href="/sign-up" asChild>

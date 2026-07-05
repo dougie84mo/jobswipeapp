@@ -4,7 +4,7 @@ project_id = "recruit-swipe"
 [api]
 enabled = true
 port = 54321
-schemas = ["public"]
+schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
@@ -32,11 +32,35 @@ site_url = "recruitswipe://"
 additional_redirect_urls = ["recruitswipe://auth/callback", "http://localhost:8081/auth/callback"]
 jwt_expiry = 3600
 enable_signup = true
+minimum_password_length = 8
+
+# TOTP MFA stays enabled to match the hosted project's default — the app has
+# no MFA UI yet, but disabling it server-side would be a needless config drift.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
 
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
-enable_confirmations = false
+enable_confirmations = true
+otp_length = 6
+otp_expiry = 3600
+max_frequency = "1m0s"
+
+# All auth emails are code-based ({{ .Token }}), never link-based — the app has
+# no deep linking, so a 6-digit code entered in-app is the only flow that works.
+[auth.email.template.magic_link]
+subject = "Your Recruit Swipe sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Recruit Swipe password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm your Recruit Swipe account"
+content_path = "./supabase/templates/confirmation.html"
 
 [edge_runtime]
 enabled = true

@@ -11,6 +11,45 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-04 — Auth hardening: code-based emails, password reset, Expo Go fix
+
+### Added
+- **Forgot-password flow** (`src/app/reset-password.tsx`, linked from sign-in):
+  email → 6-digit recovery code → new password, fully in-app via
+  `verifyOtp(type: 'recovery')` + `updateUser`. No deep link involved, so it
+  works in Expo Go and any future build alike.
+- **In-app sign-up confirmation** — email confirmations are now ON for the
+  hosted project; the sign-up screen gained a verify step (6-digit code +
+  resend via `auth.resend`) instead of the old "check your inbox, then sign
+  in" link flow that dead-ended in a browser.
+- **Auth email templates versioned in-repo** (`supabase/templates/*.html`,
+  wired in `config.toml`, deployed with `npx supabase config push`). All three
+  templates (magic link / recovery / confirmation) are code-based
+  (`{{ .Token }}`) — never link-based, since the app has no deep linking.
+
+### Fixed
+- **"Resend code" emailed a magic link instead of a 6-digit code.** Root
+  cause: Supabase's default Magic Link template uses `{{ .ConfirmationURL }}`,
+  and `signInWithOtp` on an *existing* user sends that template (a new user
+  got the signup template — which is why the first email differed from the
+  resend). All templates now carry `{{ .Token }}`; remote `otp_length` was
+  also 8 while the app's UI expected 6 — pinned to 6.
+- **Red-box error on first load in Expo Go** — importing `expo-notifications`
+  at module scope fired its push-token auto-registration side effect, which
+  red-boxes in Expo Go (remote push unsupported since SDK 53). `register.ts`
+  now bails in Expo Go before a deferred `await import('expo-notifications')`.
+- **OTP fallback no longer creates accounts** — `sendEmailOtp` was
+  `shouldCreateUser: true`, so any typo'd email silently became a phantom
+  passwordless account, bypassing sign-up. Now `false`, with a friendly
+  "no account found — sign up first" alert.
+
+### Changed
+- Hosted auth config now managed from `supabase/config.toml` (was: dashboard
+  drift). Pinned: `minimum_password_length = 8` (matches the client check;
+  server default was 6), `otp_length = 6`, `otp_expiry = 3600`,
+  email `max_frequency = "1m0s"`, `enable_confirmations = true`, TOTP MFA
+  left enabled to match the hosted default.
+
 ## 2026-07-01 — Full adapter audit + status snapshot
 
 ### Added
