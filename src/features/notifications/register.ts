@@ -7,14 +7,14 @@
 // reassigns the token to the new user (the RPC handles the swap on
 // expo_push_token's unique constraint).
 //
-// In stock Expo Go (SDK 54+) getExpoPushTokenAsync rejects with
-// "expo-notifications functionality is not fully supported in Expo Go".
-// We catch and continue silently — the rest of the app stays usable; push
+// In stock Expo Go (SDK 53+) remote push is unsupported, and merely importing
+// expo-notifications runs its DevicePushTokenAutoRegistration side effect,
+// which red-boxes a "not supported in Expo Go" error on app load. So the
+// import is deferred to call time and skipped entirely in Expo Go — push
 // just doesn't fire until the project moves to a dev client.
 
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { getSupabase } from '@/lib/supabase';
@@ -31,6 +31,12 @@ export async function registerPushToken(): Promise<void> {
   // expo-notifications can't issue a real token. Bail out early in both
   // cases so we don't surface a misleading error to the recruiter.
   if (Platform.OS === 'web' || !Device.isDevice) return;
+
+  // Expo Go can't do remote push at all, and importing expo-notifications
+  // there triggers a red-box warning — bail before the import below.
+  if (Constants.executionEnvironment === 'storeClient') return;
+
+  const Notifications = await import('expo-notifications');
 
   let granted = false;
   try {
