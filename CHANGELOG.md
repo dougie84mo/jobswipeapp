@@ -14,6 +14,15 @@ pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 ## 2026-07-04 — Candidates tab + Settings restructure
 
 ### Added
+- **Candidate profile screen** (`(app)/candidate/[swipeId].tsx`) — pushed
+  when tapping a match on the Candidates tab (previously routed to the
+  integration's Activity list). Shows the cached candidate snapshot (photo,
+  headline, location, experience, skills, resume link) plus the swipe
+  outcome (per-action status via `describeAction`, now shared in
+  `features/swipes/action-labels.ts`) and a link to the source's Activity.
+  Backed by `useMatch(swipeId)`.
+- Stack headers now use `headerBackButtonDisplayMode: 'minimal'` — kills
+  the literal "(tabs)" back-button label on detail screens.
 - **Candidates tab** — fourth tab: the recruiter's shortlist. Lists every
   positive swipe (right = Saved, up = Boosted) across all integrations,
   newest first, via a new `useMatches` hook (`src/features/swipes/matches.ts`

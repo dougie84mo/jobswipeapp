@@ -67,13 +67,7 @@ function MatchCard({ row }: { row: MatchRow }) {
 
   return (
     <Pressable
-      // The swipe outcome detail (which actions ran, what failed) lives on
-      // the integration's Activity screen.
-      onPress={
-        integration
-          ? () => router.push(`/integration/${integration.id}/activity`)
-          : undefined
-      }
+      onPress={() => router.push(`/candidate/${row.id}`)}
       style={({ pressed }) => [styles.cardPressable, pressed && styles.pressed]}
     >
       <ThemedView type="backgroundElement" style={styles.card}>

@@ -30,10 +30,16 @@ export default function AppLayout() {
 
   return (
     <ErrorBoundary onReset={() => router.replace('/')}>
-      <Stack screenOptions={{ headerShown: true }}>
+      {/* headerBackButtonDisplayMode: 'minimal' — chevron only, no label.
+          The default label is the previous route's name, which renders as
+          the literal "(tabs)" when a detail screen is pushed from a tab. */}
+      <Stack
+        screenOptions={{ headerShown: true, headerBackButtonDisplayMode: 'minimal' }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="connect" options={{ title: 'Connect a source' }} />
         <Stack.Screen name="settings/profile" options={{ title: 'Profile' }} />
+        <Stack.Screen name="candidate/[swipeId]" options={{ title: 'Candidate' }} />
         <Stack.Screen name="integration/[id]/index" options={{ title: 'Integration' }} />
         <Stack.Screen name="integration/[id]/settings" options={{ title: 'Swipe actions' }} />
         <Stack.Screen name="integration/[id]/activity" options={{ title: 'Activity' }} />

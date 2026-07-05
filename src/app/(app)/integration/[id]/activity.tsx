@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useIntegration } from '@/features/integrations/queries';
+import { describeAction } from '@/features/swipes/action-labels';
 import {
   useActivity,
   useRetryAction,
@@ -218,6 +219,9 @@ function ActivityCard({
   );
 }
 
+// describeAction lives in features/swipes/action-labels (shared with the
+// candidate profile screen).
+
 function summarizeActions(actions: ExecutedAction[]): string {
   if (actions.length === 0) return 'No actions configured';
   const success = actions.filter((a) => a.status === 'success').length;
@@ -228,24 +232,6 @@ function summarizeActions(actions: ExecutedAction[]): string {
   if (failure) parts.push(`${failure} failed`);
   if (skipped) parts.push(`${skipped} skipped`);
   return parts.join(' • ');
-}
-
-function describeAction(action: ExecutedAction): string {
-  const d = action.descriptor;
-  switch (d.type) {
-    case 'advance_stage':
-      return `Advance stage → ${d.stage_id}`;
-    case 'reject':
-      return d.reason_id ? `Reject (${d.reason_id})` : 'Reject';
-    case 'apply_tag':
-      return `Apply tag → ${d.tag_id}`;
-    case 'send_template':
-      return `Send template → ${d.template_id}`;
-    case 'add_note':
-      return `Add note: "${d.text}"`;
-    case 'local_only':
-      return 'Record locally only';
-  }
 }
 
 const styles = StyleSheet.create({
