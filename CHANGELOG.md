@@ -11,6 +11,25 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-04 — Candidates tab + Settings restructure
+
+### Added
+- **Candidates tab** — fourth tab: the recruiter's shortlist. Lists every
+  positive swipe (right = Saved, up = Boosted) across all integrations,
+  newest first, via a new `useMatches` hook (`src/features/swipes/matches.ts`
+  — swipes joined to the candidate/requisition caches through PostgREST
+  embeds, RLS-scoped). Cards show avatar/initials, headline, requisition,
+  source, and a Saved/Boosted pill; tapping opens that integration's
+  Activity screen. `record_swipe` success now invalidates the matches query.
+- **`/settings/profile`** (pushed) — display name / org editing moved off
+  the tab into its own screen.
+
+### Changed
+- **Profile tab → Settings tab** — rebuilt as a grouped options list
+  (`NavRow` / `SwitchRow` primitives) so future options are one row each:
+  Account → Profile, Sources → Connect a source, Preferences → push +
+  gesture switches, Sign out. Connections button on the tab is unchanged.
+
 ## 2026-07-04 — Auth hardening: code-based emails, password reset, Expo Go fix
 
 ### Added

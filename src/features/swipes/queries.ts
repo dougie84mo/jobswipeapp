@@ -18,6 +18,7 @@ import type {
   SwipeDirection,
 } from '@/ats/types';
 import type { IntegrationRow } from '@/features/integrations/queries';
+import { MATCHES_KEY } from '@/features/swipes/matches';
 import { getSupabase } from '@/lib/supabase';
 
 function swipedKey(integrationId: string, requisitionExternalId: string) {
@@ -148,6 +149,8 @@ export function useRecordSwipe() {
       void qc.invalidateQueries({
         queryKey: candidatesKey(input.integration.id, input.requisition.externalId),
       });
+      // Positive swipes surface on the Candidates tab.
+      void qc.invalidateQueries({ queryKey: MATCHES_KEY });
     },
   });
 }

@@ -4,8 +4,9 @@ import { Tabs } from 'expo-router';
 // Bottom tab navigator.
 //
 // Home is the landing dashboard. Connections is the integrations list the
-// swipe flow starts from. Profile holds account settings and the
-// Connect ATS entry-point button.
+// swipe flow starts from. Candidates is the recruiter's shortlist — every
+// positive swipe (Save / Boost) across all sources. Settings is a grouped
+// options list (profile, sources, preferences, sign out).
 //
 // Detail screens (integration/[id]/*, swipe/[reqId], connect) live in the
 // parent (app) Stack so pushing to them hides the tab bar.
@@ -52,13 +53,27 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="candidates"
         options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
+          title: 'Candidates',
+          tabBarLabel: 'Candidates',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
-              name={focused ? 'person' : 'person-outline'}
+              name={focused ? 'people' : 'people-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'settings' : 'settings-outline'}
               size={size}
               color={color}
             />
