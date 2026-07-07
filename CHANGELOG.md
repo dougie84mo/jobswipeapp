@@ -11,6 +11,26 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-06 — Provider-access re-verification + outreach packets
+
+### Changed
+- **`docs/ats-credentials-guide.md` updated from a full 14-provider access
+  re-verification** (all channel URLs fetched 2026-07-06). Headline finding:
+  🚨 **Greenhouse Harvest v1/v2 are removed 2026-08-31 and v3 switches auth
+  from Basic to OAuth client-credentials** — the live `_shared/greenhouse.ts`
+  client must be migrated before then (same Vault/extras pattern as
+  SmartRecruiters). Other corrections: SmartRecruiters moved out of the
+  free-sandbox tier (no self-serve sandbox exists); BambooHR test accounts go
+  through a request form (1–2 business days, max 2 per developer) and its ATS
+  API documents an Update Applicant Status endpoint (reject may be
+  promotable); Workable tokens now carry scopes + mandatory expiry (≤2y);
+  Lever's sandbox registration is browser-only and needs a hosted square
+  logo; Teamtailor partner intake is techpartnerships@teamtailor.com.
+- Source-of-record pointer for outreach status now `prompts/outreach/_TRACKER.md`
+  (gitignored), with execution-ready per-provider packets beside it — one per
+  ATS plus an Indeed/ZipRecruiter handoff brief for the delegated
+  partner-outreach agent.
+
 ## 2026-07-05 — Settings becomes a navigation hub
 
 ### Added
