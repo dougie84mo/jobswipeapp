@@ -35,6 +35,27 @@ export const greenhouse = {
     attachments: [{ type: 'resume', url: 'https://files.example.test/r.pdf' }],
     photo_url: 'https://img.example.test/a.png',
     tags: ['referral'],
+    employments: [
+      {
+        company_name: 'Acme',
+        title: 'Engineer',
+        start_date: '2021-03-01',
+        end_date: null,
+      },
+      {
+        company_name: 'Initech',
+        title: 'Junior Engineer',
+        start_date: '2018-06-01',
+        end_date: '2021-02-01',
+      },
+    ],
+    educations: [{
+      school_name: 'State University',
+      degree: 'B.S.',
+      discipline: 'Computer Science',
+      start_date: '2014-09-01',
+      end_date: '2018-05-01',
+    }],
   },
   stages: [
     { id: 30, name: 'Screen', active: true, priority: 1 },
@@ -170,6 +191,42 @@ export const workable = {
       tags: ['sql'],
       resume_url: 'https://files.example.test/w.pdf',
     }],
+  },
+  // Candidate detail (GET /candidates/:id) — wrapped in { candidate }, carries
+  // the structured history the per-job list omits.
+  candidateDetail: {
+    candidate: {
+      id: 'wc1',
+      name: 'Sam Sample',
+      headline: 'Analyst',
+      address: 'Austin, US',
+      tags: ['sql'],
+      resume_url: 'https://files.example.test/w.pdf',
+      skills: [{ name: 'SQL' }, { name: 'Python' }],
+      experience_entries: [
+        {
+          title: 'Data Analyst',
+          company: 'Halcyon Data',
+          start_date: '2022-01-01',
+          end_date: null,
+          current: true,
+        },
+        {
+          title: 'BI Intern',
+          company: 'Quartz Analytics',
+          start_date: '2020-05-01',
+          end_date: '2021-12-01',
+          current: false,
+        },
+      ],
+      education_entries: [{
+        school: 'City College',
+        degree: 'B.A.',
+        field_of_study: 'Mathematics',
+        start_date: '2016-09-01',
+        end_date: '2020-05-01',
+      }],
+    },
   },
   stages: { stages: [{ slug: 'sourced', name: 'Sourced', position: 0 }] },
   tags: { tags: ['sql', 'python'] },

@@ -103,8 +103,18 @@ const CAND_KEYS = new Set([
   'photoUrl',
   'skills',
   'yearsExperience',
+  'experience',
+  'education',
   'raw',
 ]);
+const EXPERIENCE_KEYS = new Set([
+  'title',
+  'company',
+  'start',
+  'end',
+  'summary',
+]);
+const EDUCATION_KEYS = new Set(['school', 'degree', 'field', 'start', 'end']);
 const STAGE_KEYS = new Set(['id', 'name', 'order']);
 const TAG_KEYS = new Set(['id', 'name']);
 
@@ -155,6 +165,42 @@ function assertCandidate(c: any): void {
   );
   assert('raw' in c, 'candidate must retain raw');
   assertOnlyKeys(c, CAND_KEYS, 'candidate');
+  if (c.experience !== undefined) {
+    assert(Array.isArray(c.experience), 'candidate.experience must be array');
+    // deno-lint-ignore no-explicit-any
+    for (const e of c.experience as any[]) {
+      assertOnlyKeys(e, EXPERIENCE_KEYS, 'experience entry');
+      for (const [k, v] of Object.entries(e)) {
+        if (v !== undefined) {
+          assertEquals(typeof v, 'string', `experience.${k} must be string`);
+        }
+      }
+    }
+  }
+  if (c.education !== undefined) {
+    assert(Array.isArray(c.education), 'candidate.education must be array');
+    // deno-lint-ignore no-explicit-any
+    for (const e of c.education as any[]) {
+      assertOnlyKeys(e, EDUCATION_KEYS, 'education entry');
+      assertEquals(
+        typeof e.school,
+        'string',
+        'education.school must be string',
+      );
+      for (const [k, v] of Object.entries(e)) {
+        if (v !== undefined) {
+          assertEquals(typeof v, 'string', `education.${k} must be string`);
+        }
+      }
+    }
+  }
+  if (c.yearsExperience !== undefined) {
+    assertEquals(
+      typeof c.yearsExperience,
+      'number',
+      'candidate.yearsExperience must be number',
+    );
+  }
 }
 
 // deno-lint-ignore no-explicit-any
@@ -194,6 +240,21 @@ Deno.test('greenhouse: reads emit valid normalized shapes', async () => {
     cands.items.forEach(assertCandidate);
     assertEquals(cands.items[0]!.externalId, '7001');
     assertEquals(cands.items[0]!.requisitionExternalId, '101');
+    // Structured history: employments/educations map + most-recent-first
+    // (open-ended Acme role sorts above the ended Initech one), and
+    // yearsExperience is derived from the timeline (2018-06 -> now, >6y).
+    const ada = cands.items[0]!;
+    assertEquals(ada.experience!.length, 2);
+    assertEquals(ada.experience![0]!.company, 'Acme');
+    assertEquals(ada.experience![0]!.end, undefined);
+    assertEquals(ada.experience![1]!.company, 'Initech');
+    assertEquals(ada.education!.length, 1);
+    assertEquals(ada.education![0]!.school, 'State University');
+    assertEquals(ada.education![0]!.field, 'Computer Science');
+    assert(
+      typeof ada.yearsExperience === 'number' && ada.yearsExperience > 6,
+      'yearsExperience must be derived from employments',
+    );
 
     const stages = await gh.listStages('k', '101');
     stages.forEach(assertStage);
@@ -302,6 +363,9 @@ Deno.test('lever: single-page cursor returns the real next offset', async () => 
 // ============================================================================
 Deno.test('workable: reads emit valid normalized shapes', async () => {
   const restore = installRouter([
+    // Detail route first: /candidates/wc1 (detail) vs .../candidates?limit
+    // (per-job list) both contain '/candidates'.
+    { match: '/candidates/wc1', body: workableFx.candidateDetail },
     { match: '/candidates', body: workableFx.candidates },
     { match: 'state=published', body: workableFx.jobs },
     { match: '/stages', body: workableFx.stages },
@@ -320,12 +384,46 @@ Deno.test('workable: reads emit valid normalized shapes', async () => {
     );
     assertPage(cands);
     cands.items.forEach(assertCandidate);
+    // Detail enrichment: structured history + parsed skills union with tags,
+    // current:true entry stays open-ended, yearsExperience derived.
+    const sam = cands.items[0]!;
+    assertEquals(sam.experience!.length, 2);
+    assertEquals(sam.experience![0]!.company, 'Halcyon Data');
+    assertEquals(sam.experience![0]!.end, undefined);
+    assertEquals(sam.education![0]!.school, 'City College');
+    assertEquals(sam.skills, ['sql', 'SQL', 'Python']);
+    assert(
+      typeof sam.yearsExperience === 'number' && sam.yearsExperience > 4,
+      'yearsExperience must be derived from experience_entries',
+    );
 
     const stages = await workable.listStages('acme', 't', 'ABC123');
     stages.forEach(assertStage);
 
     const tags = await workable.listTags('acme', 't');
     tags.forEach(assertTag);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test('workable: detail-fetch failure degrades to summary fields', async () => {
+  const restore = installRouter([
+    { match: '/candidates/wc1', body: { error: 'nope' }, status: 500 },
+    { match: '/candidates', body: workableFx.candidates },
+  ]);
+  try {
+    const cands = await workable.listCandidatesForRequisition(
+      'acme',
+      't',
+      'ABC123',
+    );
+    assertPage(cands);
+    cands.items.forEach(assertCandidate);
+    const sam = cands.items[0]!;
+    assertEquals(sam.fullName, 'Sam Sample');
+    assertEquals(sam.experience, undefined);
+    assertEquals(sam.skills, ['sql']); // summary tags survive
   } finally {
     restore();
   }

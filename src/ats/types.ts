@@ -95,6 +95,27 @@ export interface Requisition {
   raw: unknown;
 }
 
+/**
+ * One employment span. Dates are loose strings ("2022-01-05", "2022-01",
+ * "2022") because providers disagree; render-side formats leniently and
+ * deriveYearsExperience() parses what it can. `end` absent = current role.
+ */
+export interface ExperienceEntry {
+  title?: string;
+  company?: string;
+  start?: string;
+  end?: string;
+  summary?: string;
+}
+
+export interface EducationEntry {
+  school: string;
+  degree?: string;
+  field?: string;
+  start?: string;
+  end?: string;
+}
+
 export interface Candidate {
   externalId: string;
   requisitionExternalId: string;
@@ -105,6 +126,10 @@ export interface Candidate {
   photoUrl?: string;
   skills?: string[];
   yearsExperience?: number;
+  /** Employment history, most-recent first. Sparse for most providers. */
+  experience?: ExperienceEntry[];
+  /** Education history, most-recent first. Sparse for most providers. */
+  education?: EducationEntry[];
   raw: unknown;
 }
 

@@ -139,6 +139,8 @@ export function useRecordSwipe() {
         p_candidate_raw: input.candidate.raw ?? null,
         p_direction: input.direction,
         p_executed_actions: input.executedActions ?? [],
+        p_candidate_experience: input.candidate.experience ?? null,
+        p_candidate_education: input.candidate.education ?? null,
       });
       if (error) throw error;
     },

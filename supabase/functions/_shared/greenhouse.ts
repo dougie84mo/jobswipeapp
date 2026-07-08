@@ -23,6 +23,12 @@ import {
   PER_PAGE,
   pooledMap,
 } from './http.ts';
+import {
+  deriveYearsExperience,
+  type NormEducationEntry,
+  type NormExperienceEntry,
+  sortMostRecentFirst,
+} from './candidate-derive.ts';
 
 const BASE_URL = 'https://harvest.greenhouse.io/v1';
 
@@ -145,6 +151,8 @@ export interface NormCandidate {
   photoUrl?: string;
   skills?: string[];
   yearsExperience?: number;
+  experience?: NormExperienceEntry[];
+  education?: NormEducationEntry[];
   raw: unknown;
 }
 export interface NormStage {
@@ -200,6 +208,44 @@ interface GhCandidate {
   photo_url?: string;
   tags?: string[];
   applications?: { id: number; jobs?: { id: number; name: string }[] }[];
+  employments?: {
+    company_name?: string | null;
+    title?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  }[];
+  educations?: {
+    school_name?: string | null;
+    degree?: string | null;
+    discipline?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  }[];
+}
+
+function mapEmployments(c: GhCandidate): NormExperienceEntry[] | undefined {
+  const entries = (c.employments ?? [])
+    .filter((e) => e.title || e.company_name)
+    .map((e): NormExperienceEntry => ({
+      title: e.title ?? undefined,
+      company: e.company_name ?? undefined,
+      start: e.start_date ?? undefined,
+      end: e.end_date ?? undefined,
+    }));
+  return entries.length > 0 ? sortMostRecentFirst(entries) : undefined;
+}
+
+function mapEducations(c: GhCandidate): NormEducationEntry[] | undefined {
+  const entries = (c.educations ?? [])
+    .filter((e) => e.school_name)
+    .map((e): NormEducationEntry => ({
+      school: e.school_name!,
+      degree: e.degree ?? undefined,
+      field: e.discipline ?? undefined,
+      start: e.start_date ?? undefined,
+      end: e.end_date ?? undefined,
+    }));
+  return entries.length > 0 ? sortMostRecentFirst(entries) : undefined;
 }
 
 // ============================================================================
@@ -277,6 +323,7 @@ export async function listCandidatesForRequisition(
         (a) =>
           a.type === 'resume' || a.type === 'Resume' || /resume/i.test(a.url),
       );
+      const experience = mapEmployments(c);
       return {
         externalId: String(c.id),
         requisitionExternalId: jobExternalId,
@@ -286,6 +333,9 @@ export async function listCandidatesForRequisition(
         resumeUrl: resume?.url,
         photoUrl: c.photo_url,
         skills: c.tags ?? undefined,
+        yearsExperience: deriveYearsExperience(experience),
+        experience,
+        education: mapEducations(c),
         raw: c,
       } satisfies NormCandidate;
     },

@@ -11,6 +11,53 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-07 — Structured candidate history (info-first cards, phase 1)
+
+### Added
+- **`Candidate.experience` / `Candidate.education`** — the normalized model
+  (`src/ats/types.ts`) gains employment history (`ExperienceEntry[]`: title,
+  company, start/end, summary; `end` absent = current role) and education
+  (`EducationEntry[]`: school, degree, field, dates), both most-recent-first.
+  Groundwork for the information-first card redesign (photos are rare and
+  bias-prone; recruiting signal lives in the history).
+- **`src/ats/candidate-utils.ts`** — `deriveYearsExperience` (timeline span,
+  clamped [0,50]), `parseLooseDate`, `sortMostRecentFirst`, `currentRole`,
+  `initials`. Jest-covered (`src/ats/__tests__/candidate-utils.test.ts`).
+  Mirrored for the edge runtime in
+  `supabase/functions/_shared/candidate-derive.ts` (single home for the Norm
+  entry shapes the Deno clients import).
+- **Migration `0016_candidate_profile_fields.sql`** — `candidates.experience`
+  / `candidates.education` jsonb + **`record_swipe` v4** (two new defaulted
+  params; the 17-arg v3 signature is dropped first to avoid an ambiguous
+  overload, grants re-issued).
+
+### Changed
+- **Greenhouse Deno client** maps Harvest `employments[]`/`educations[]` and
+  derives `yearsExperience` from the timeline (no provider sends it
+  explicitly — previously it was always empty).
+- **Workable Deno client** now enriches each per-job list row with a pooled
+  candidate-detail fetch (`experience_entries`/`education_entries`/parsed
+  `skills`, unioned with tags), concurrency 3 against Workable's ~5 req/s
+  throttle, degrading to summary fields per-candidate on failure. Note: this
+  also raises `detect-new-candidates` scan cost for Workable (detail fetches
+  it doesn't need) — acceptable while scans are manual, worth a lean mode
+  when scheduling lands. ⚠️ detail response shape (wrapped vs bare) handled
+  defensively; confirm against a sandbox.
+- **Mock adapter** regenerated: seeded 2–4-role experience timelines (~60%
+  currently employed) + 1–2 education entries; `yearsExperience` now derived;
+  skills 3–6; ~40% carry a resume link (exercises the coming has-resume
+  filter); **photos only on every 5th candidate** — initials become the
+  common case, matching real providers.
+- Contract tests: experience/education shape assertions (string-valued keys,
+  no leakage), Greenhouse fixture extended, Workable detail fixture + route +
+  degrade-on-500 test. Ashby/Recruitee structured history deferred pending
+  field verification; SmartRecruiters/Lever noted as deferred in-plan.
+
+### Pending deploy (user)
+- `npx supabase db push` (0016) then `npx supabase functions deploy ats-proxy`
+  — the app passes the two new `record_swipe` params, so push the migration
+  before running the app against this branch.
+
 ## 2026-07-06 — Provider-access re-verification + outreach packets
 
 ### Changed

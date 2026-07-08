@@ -6,7 +6,12 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { getSupabase } from '@/lib/supabase';
-import type { ExecutedAction, ProviderId } from '@/ats/types';
+import type {
+  EducationEntry,
+  ExecutedAction,
+  ExperienceEntry,
+  ProviderId,
+} from '@/ats/types';
 
 export const MATCHES_KEY = ['matches'] as const;
 
@@ -71,6 +76,8 @@ export interface MatchDetailRow {
     resume_url: string | null;
     skills: string[] | null;
     years_experience: number | null;
+    experience: ExperienceEntry[] | null;
+    education: EducationEntry[] | null;
     integration: {
       id: string;
       provider: ProviderId;
@@ -96,7 +103,7 @@ export function useMatch(swipeId: string | undefined) {
         .select(
           'id, direction, created_at, executed_actions, notes, ' +
             'candidate:candidates(id, external_id, full_name, headline, location, ' +
-            'photo_url, resume_url, skills, years_experience, ' +
+            'photo_url, resume_url, skills, years_experience, experience, education, ' +
             'integration:integrations(id, provider, display_label)), ' +
             'requisition:requisitions(id, title, department, location)',
         )

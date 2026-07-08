@@ -20,7 +20,14 @@ import {
   callWrite,
   MAX_PAGES,
   PER_PAGE,
+  pooledMap,
 } from './http.ts';
+import {
+  deriveYearsExperience,
+  type NormEducationEntry,
+  type NormExperienceEntry,
+  sortMostRecentFirst,
+} from './candidate-derive.ts';
 
 function baseUrl(subdomain: string): string {
   return `https://${subdomain}.workable.com/spi/v3`;
@@ -136,6 +143,8 @@ export interface NormCandidate {
   photoUrl?: string;
   skills?: string[];
   yearsExperience?: number;
+  experience?: NormExperienceEntry[];
+  education?: NormEducationEntry[];
   raw: unknown;
 }
 export interface NormStage {
@@ -175,6 +184,77 @@ interface WorkableCandidate {
   address?: string;
   tags?: string[];
   resume_url?: string;
+}
+// Candidate detail (GET /candidates/:id) — carries structured history the
+// per-job list omits. Docs wrap the payload as { candidate: {...} } but the
+// existing tags code has seen it unwrapped; unwrapDetail handles both.
+// skills is seen as both string[] and {name}[] across accounts.
+interface WorkableCandidateDetail extends WorkableCandidate {
+  experience_entries?: {
+    title?: string | null;
+    company?: string | null;
+    summary?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    current?: boolean;
+  }[];
+  education_entries?: {
+    school?: string | null;
+    degree?: string | null;
+    field_of_study?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  }[];
+  skills?: (string | { name?: string })[];
+}
+
+function unwrapDetail(res: unknown): WorkableCandidateDetail | undefined {
+  if (!res || typeof res !== 'object') return undefined;
+  const maybe = res as { candidate?: unknown; id?: unknown };
+  if (maybe.candidate && typeof maybe.candidate === 'object') {
+    return maybe.candidate as WorkableCandidateDetail;
+  }
+  return maybe.id !== undefined ? (res as WorkableCandidateDetail) : undefined;
+}
+
+function mapExperience(
+  d: WorkableCandidateDetail,
+): NormExperienceEntry[] | undefined {
+  const entries = (d.experience_entries ?? [])
+    .filter((e) => e.title || e.company)
+    .map((e): NormExperienceEntry => ({
+      title: e.title ?? undefined,
+      company: e.company ?? undefined,
+      summary: e.summary ?? undefined,
+      start: e.start_date ?? undefined,
+      // `current: true` entries are open-ended even if end_date is stale.
+      end: e.current ? undefined : e.end_date ?? undefined,
+    }));
+  return entries.length > 0 ? sortMostRecentFirst(entries) : undefined;
+}
+
+function mapEducation(
+  d: WorkableCandidateDetail,
+): NormEducationEntry[] | undefined {
+  const entries = (d.education_entries ?? [])
+    .filter((e) => e.school)
+    .map((e): NormEducationEntry => ({
+      school: e.school!,
+      degree: e.degree ?? undefined,
+      field: e.field_of_study ?? undefined,
+      start: e.start_date ?? undefined,
+      end: e.end_date ?? undefined,
+    }));
+  return entries.length > 0 ? sortMostRecentFirst(entries) : undefined;
+}
+
+function mapDetailSkills(d: WorkableCandidateDetail): string[] | undefined {
+  const raw = d.skills;
+  if (!raw || raw.length === 0) return undefined;
+  const names = raw
+    .map((s) => (typeof s === 'string' ? s : s.name))
+    .filter((s): s is string => Boolean(s));
+  return names.length > 0 ? names : undefined;
 }
 interface WorkableStage {
   slug: string;
@@ -241,9 +321,13 @@ export async function listCandidatesForRequisition(
   jobShortcode: string,
   cursor?: string,
 ): Promise<NormPage<NormCandidate>> {
-  // /jobs/:shortcode/candidates returns candidates for a specific job
-  // already filtered to that posting — no follow-up GET needed. No cursor →
-  // walk all (nextCursor null); a cursor → one page + next URL.
+  // /jobs/:shortcode/candidates returns candidates for a specific job but
+  // only summary fields; structured history (experience_entries /
+  // education_entries / skills) lives on the candidate detail endpoint. Each
+  // summary row is enriched via a pooled detail fetch, degrading to the
+  // summary fields when the detail call fails (rate limit, deleted, etc).
+  // Workable throttles at ~5 req/s per subdomain — keep concurrency low.
+  // No cursor → walk all (nextCursor null); a cursor → one page + next URL.
   const path = `/jobs/${encodeURIComponent(jobShortcode)}/candidates`;
   const map = (c: WorkableCandidate): NormCandidate => ({
     externalId: c.id,
@@ -257,6 +341,38 @@ export async function listCandidatesForRequisition(
     skills: c.tags,
     raw: c,
   });
+  const enrich = async (c: WorkableCandidate): Promise<NormCandidate> => {
+    const base = map(c);
+    let detail: WorkableCandidateDetail | undefined;
+    try {
+      const res = await call<unknown>(
+        subdomain,
+        token,
+        `/candidates/${encodeURIComponent(c.id)}`,
+      );
+      detail = unwrapDetail(res);
+    } catch {
+      return base; // summary-only fallback
+    }
+    if (!detail) return base;
+    const experience = mapExperience(detail);
+    const detailSkills = mapDetailSkills(detail);
+    return {
+      ...base,
+      headline: base.headline ?? detail.headline,
+      location: base.location ?? detail.address,
+      resumeUrl: base.resumeUrl ?? detail.resume_url,
+      // Union tags (write vocabulary) with parsed skills (profile facts).
+      skills: detailSkills
+        ? Array.from(new Set([...(base.skills ?? []), ...detailSkills]))
+        : base.skills,
+      yearsExperience: deriveYearsExperience(experience),
+      experience,
+      education: mapEducation(detail),
+      raw: detail,
+    };
+  };
+  const DETAIL_CONCURRENCY = 3;
   if (cursor === undefined) {
     const candidates = await callPaged<WorkableCandidate>(
       subdomain,
@@ -264,7 +380,10 @@ export async function listCandidatesForRequisition(
       path,
       'candidates',
     );
-    return { items: candidates.map(map), nextCursor: null };
+    return {
+      items: await pooledMap(candidates, enrich, DETAIL_CONCURRENCY),
+      nextCursor: null,
+    };
   }
   const { items, nextCursor } = await callOnePage<WorkableCandidate>(
     subdomain,
@@ -273,7 +392,10 @@ export async function listCandidatesForRequisition(
     'candidates',
     cursor,
   );
-  return { items: items.map(map), nextCursor };
+  return {
+    items: await pooledMap(items, enrich, DETAIL_CONCURRENCY),
+    nextCursor,
+  };
 }
 
 export async function listStages(
