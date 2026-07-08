@@ -11,6 +11,53 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-07 — Stripe subscriptions (phase 7)
+
+### Added
+- **Real billing** (migration `0021` + two new edge functions). Model:
+  Stripe customer + subscription **per user**; the Team plan is
+  seat-quantified and bought by the team owner (covers freelance
+  partnerships — one partner pays). Plans: `free` (1 connection, no teams),
+  `pro` (unlimited connections), `team` (pro + teams up to `seats`).
+  Statuses `active`/`trialing`/`past_due` count as entitled.
+- **`subscriptions` table** — SELECT own rows + team-owners' rows
+  (`shares_team_with`); **no authenticated writes** — the stripe-webhook
+  edge function (service role) is the sole writer.
+- **Server-side gates**: `has_active_plan` helper; `create_integration` v4
+  (2nd connection needs pro/team), `create_team` v2 (needs team plan),
+  `invite_to_team` v2 (members + pending invites ≤ owner's seats).
+- **Edge functions**: `billing` (JWT-authed; `checkout` → Stripe-hosted
+  Checkout session URL with `subscription_data.metadata.user_id`, `portal` →
+  Billing Portal URL), `stripe-webhook` (verify_jwt=false; Stripe-Signature
+  verified via `constructEventAsync` + SubtleCrypto; handles
+  checkout.session.completed / customer.subscription.updated / .deleted),
+  and `billing-return` (verify_jwt=false; Stripe redirect URLs must be
+  https, so this serves the bounce page to the `recruitswipe://billing-return`
+  deep link that closes the in-app browser).
+- **App**: `src/features/billing/` — pure `entitlementsFor` (Jest-covered:
+  status matrix, plan precedence, seat surfacing, portal reachability after
+  cancel) + `useSubscriptions`/`useEntitlements`/`useOpenCheckout`/
+  `useOpenPortal` (expo-web-browser `openAuthSessionAsync`, invalidate on
+  return + manual Refresh for the webhook race). Subscriptions screen
+  replaces the stub (plan card, renew date, upgrade buttons with team-seat
+  picker, Manage billing). UI gates: Connect screen (2nd connection →
+  upgrade prompt), team screen (create team → upgrade prompt), settings tab
+  shows the live plan.
+- RLS team-sharing test seeds a team subscription (gates are live in the
+  suite); both RLS suites green against 0016–0021.
+
+### Setup required before billing works (user)
+1. Stripe dashboard: create Pro (monthly, per-user) and Team (monthly,
+   per-seat) prices.
+2. `npx supabase secrets set STRIPE_SECRET_KEY=sk_… STRIPE_WEBHOOK_SECRET=whsec_… STRIPE_PRICE_PRO=price_… STRIPE_PRICE_TEAM=price_…`
+3. Register the webhook endpoint
+   `https://lbhikadtsmbnzkzetpyb.supabase.co/functions/v1/stripe-webhook`
+   for `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.deleted`.
+4. Deploy: `npx supabase db push` (0016–0021),
+   `npx supabase functions deploy ats-proxy billing billing-return stripe-webhook`,
+   `npx supabase config push` (webhook JWT exemptions).
+
 ## 2026-07-07 — Team UX (phase 6)
 
 ### Added

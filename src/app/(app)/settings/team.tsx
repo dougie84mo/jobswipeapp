@@ -6,6 +6,7 @@
 // detail screen.
 
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -22,6 +23,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useEntitlements } from '@/features/billing/queries';
 import {
   type TeamMemberRow,
   type TeamRow,
@@ -46,11 +48,28 @@ export default function RecruitTeamScreen() {
       : undefined;
   const teamsQuery = useMyTeams();
   const createTeam = useCreateTeam();
+  const { entitlements } = useEntitlements();
   const [newTeamName, setNewTeamName] = useState('');
 
   async function handleCreate() {
     const name = newTeamName.trim();
     if (!name) return;
+    // create_team enforces this server-side too; gating here routes to the
+    // upgrade instead of surfacing the RPC error.
+    if (!entitlements.canCreateTeam) {
+      Alert.alert(
+        'Team plan required',
+        'Creating a team needs an active Team plan (joining someone else’s team is always free).',
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'See plans',
+            onPress: () => router.push('/settings/subscriptions'),
+          },
+        ],
+      );
+      return;
+    }
     try {
       await createTeam.mutateAsync({ name });
       setNewTeamName('');

@@ -68,3 +68,12 @@ policy = "oneshot"
 
 [analytics]
 enabled = false
+
+# Stripe calls the webhook without a Supabase JWT - authentication is the
+# Stripe-Signature header, verified in the function. billing-return is the
+# https -> recruitswipe:// bounce page Stripe redirects the browser to.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.billing-return]
+verify_jwt = false

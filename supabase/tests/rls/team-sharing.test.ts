@@ -87,6 +87,19 @@ Deno.test("RLS: team sharing grants teammate access and revokes on leave", async
     const B = anonClient(await signIn(emailB));
     const C = anonClient(await signIn(emailC));
 
+    // A needs an active team plan: create_team, a 2nd connection, and seats
+    // are all entitlement-gated since 0021. Seed via service role (the
+    // webhook is the only writer in production).
+    const { error: subErr } = await service.from("subscriptions").insert({
+      user_id: userA,
+      stripe_customer_id: "cus_test",
+      stripe_subscription_id: `sub_test_${run}`,
+      plan: "team",
+      status: "active",
+      seats: 5,
+    });
+    if (subErr) throw new Error(`seed subscription: ${subErr.message}`);
+
     // --- A: integrations (one to share, one private) + team ----------------
     const { data: sharedIntegration, error: ci1 } = await A.rpc(
       "create_integration",

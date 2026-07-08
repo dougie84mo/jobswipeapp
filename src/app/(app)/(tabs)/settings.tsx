@@ -9,6 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { signOut } from '@/features/auth/auth-actions';
 import { useSession } from '@/features/auth/SessionProvider';
+import { PLAN_LABEL } from '@/features/billing/entitlements';
+import { useEntitlements } from '@/features/billing/queries';
 import { useRecruiterProfile } from '@/features/profile/queries';
 
 // Settings is a pure navigation list — every option is a row pushing a
@@ -27,6 +29,7 @@ export default function SettingsScreen() {
       : undefined;
   const profileQuery = useRecruiterProfile(userId);
   const profileName = profileQuery.data?.display_name;
+  const { entitlements } = useEntitlements();
 
   async function handleSignOut() {
     try {
@@ -95,7 +98,7 @@ export default function SettingsScreen() {
             <NavRow
               icon="card-outline"
               label="Subscriptions"
-              detail="Free plan"
+              detail={`${PLAN_LABEL[entitlements.plan]} plan`}
               onPress={() => router.push('/settings/subscriptions')}
             />
           </SettingsGroup>

@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useEntitlements } from '@/features/billing/queries';
 import {
   useCreateIntegration,
   useDeleteIntegration,
@@ -224,6 +225,7 @@ export default function ConnectScreen() {
     () => new Set((existing.data ?? []).map((i) => i.provider as ProviderId)),
     [existing.data],
   );
+  const { entitlements } = useEntitlements();
   const [busy, setBusy] = useState<ProviderId | null>(null);
   const [expanded, setExpanded] = useState<ProviderId | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -278,6 +280,22 @@ export default function ConnectScreen() {
   function handleConnectClick(provider: ProviderId) {
     const meta = PROVIDER_META[provider];
     if (!meta) return;
+    // The create_integration RPC enforces this server-side too; gating here
+    // routes the recruiter to the upgrade instead of a failed connect.
+    if (!entitlements.canAddConnection) {
+      Alert.alert(
+        'Free plan limit',
+        'The free plan includes one connected source. Upgrade to Pro for unlimited connections.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'See plans',
+            onPress: () => router.push('/settings/subscriptions'),
+          },
+        ],
+      );
+      return;
+    }
     if (meta.authType === 'api_key') {
       if (expanded === provider) {
         const trimmed = apiKeyInput.trim();
