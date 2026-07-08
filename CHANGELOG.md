@@ -11,6 +11,32 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-07 — Information-first candidate card + profile (phase 2)
+
+### Added
+- **Shared `CandidateCard`** (`src/features/swipes/CandidateCard.tsx`),
+  extracted from the deck screen and redesigned info-first: 48px identity
+  circle (initials monogram; a provider photo renders *inside* the circle,
+  never as a hero image), name + headline, location/experience meta row,
+  skill chips (cap 8 + "+N more", with a `highlightSkills` prop that accents
+  matches — wired to the skill filter in phase 3), up to 3 recent roles with
+  date ranges, up to 2 education lines. Sections self-omit when a provider
+  is sparse. Card body scrolls (gesture-handler ScrollView).
+- RNTL suite `candidate-card.test.tsx` (render/omit, caps, highlight); Jest
+  CSS stub (`jest.style-stub.js`) so component tests can import the theme.
+
+### Changed
+- **SwipeableCard** pan constrained to the horizontal axis
+  (`activeOffsetX ±15` / `failOffsetY ±15`) so the card body can scroll;
+  gesture up-swipe (Boost) only fires when content doesn't overflow — the
+  Boost button remains the reliable path. Card now fills the deck area
+  (`flex: 1`) instead of being sized by the old hero photo.
+- **Candidate profile screen** hero demoted to a 64px initials-first circle;
+  new Experience (full timeline incl. summaries) and Education sections
+  between Details and Skills; local `initials()` replaced by the shared
+  helper in `candidate-utils` (which also gains `formatMonthYear` /
+  `formatDateRange`).
+
 ## 2026-07-07 — Structured candidate history (info-first cards, phase 1)
 
 ### Added

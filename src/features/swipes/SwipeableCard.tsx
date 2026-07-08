@@ -14,6 +14,12 @@
 // - Once the candidate index advances, parent re-mounts this component
 //   (key={candidate.externalId}), which resets translateX/Y to 0 for the
 //   next card — no manual reset needed inside the component.
+// - The card body scrolls (CandidateCard wraps its content in a
+//   gesture-handler ScrollView), so the pan claims horizontal drags only:
+//   activeOffsetX activates past a small horizontal slop and failOffsetY
+//   hands clean vertical drags to the ScrollView. Consequence: the up-swipe
+//   (Boost) gesture only works when the card content doesn't scroll; the
+//   Boost button is the always-available path. Tune the offsets on-device.
 
 import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
@@ -47,6 +53,9 @@ export function SwipeableCard({ enabled, onSwipe, children }: SwipeableCardProps
 
   const gesture = Gesture.Pan()
     .enabled(enabled)
+    // Horizontal drags swipe; vertical drags scroll the card body.
+    .activeOffsetX([-15, 15])
+    .failOffsetY([-15, 15])
     .onUpdate((e) => {
       translateX.value = e.translationX;
       translateY.value = e.translationY;
@@ -88,5 +97,7 @@ export function SwipeableCard({ enabled, onSwipe, children }: SwipeableCardProps
 }
 
 const styles = StyleSheet.create({
-  fill: { width: '100%' },
+  // flex: 1 so the info-first card fills the deck area (content used to size
+  // the card when the photo was the hero; now the layout owns the height).
+  fill: { width: '100%', flex: 1 },
 });

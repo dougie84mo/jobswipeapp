@@ -48,6 +48,32 @@ export function sortMostRecentFirst<T extends { start?: string; end?: string }>(
   return [...entries].sort((a, b) => rank(b) - rank(a));
 }
 
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const;
+
+/** "2022-01" -> "Jan 2022"; unparseable input falls through verbatim. */
+export function formatMonthYear(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const ms = parseLooseDate(value);
+  if (ms === undefined) return value;
+  const d = new Date(ms);
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+/** "Jan 2022 – Present" / "Jun 2018 – Feb 2021" / undefined when dateless. */
+export function formatDateRange(entry: {
+  start?: string;
+  end?: string;
+}): string | undefined {
+  const start = formatMonthYear(entry.start);
+  const end = entry.end === undefined ? 'Present' : formatMonthYear(entry.end);
+  if (!start && entry.end === undefined) return undefined;
+  if (!start) return end;
+  return `${start} – ${end}`;
+}
+
 const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
 
 /**

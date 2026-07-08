@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -15,10 +14,11 @@ import {
   useIntegrationSettings,
 } from '@/features/integrations/settings';
 import { useRecruiterProfile } from '@/features/profile/queries';
+import { CandidateCard } from '@/features/swipes/CandidateCard';
 import { executeActions } from '@/features/swipes/execute-actions';
 import { useDeckCandidates, useRecordSwipe } from '@/features/swipes/queries';
 import { SwipeableCard } from '@/features/swipes/SwipeableCard';
-import type { Candidate, ExecutedAction, SwipeDirection } from '@/ats/types';
+import type { ExecutedAction, SwipeDirection } from '@/ats/types';
 
 export default function SwipeDeckScreen() {
   const params = useLocalSearchParams<{ reqId: string; integrationId?: string }>();
@@ -213,68 +213,6 @@ export default function SwipeDeckScreen() {
   );
 }
 
-function CandidateCard({ candidate }: { candidate: Candidate }) {
-  // Group the card into one screen-reader node so it announces the candidate
-  // as a sentence instead of reading each chip / emoji separately.
-  const a11yLabel = [
-    candidate.fullName,
-    candidate.headline,
-    candidate.location ? `Location ${candidate.location}` : null,
-    candidate.yearsExperience !== undefined
-      ? `${Math.round(candidate.yearsExperience)} years experience`
-      : null,
-    candidate.skills?.length ? `Skills: ${candidate.skills.join(', ')}` : null,
-  ]
-    .filter(Boolean)
-    .join('. ');
-  return (
-    <ThemedView
-      type="backgroundElement"
-      style={styles.card}
-      accessible
-      accessibilityLabel={a11yLabel}
-    >
-      {candidate.photoUrl ? (
-        <Image
-          source={{ uri: candidate.photoUrl }}
-          style={styles.photo}
-          contentFit="cover"
-          transition={200}
-        />
-      ) : (
-        <View style={[styles.photo, styles.photoFallback]} />
-      )}
-      <View style={styles.cardBody}>
-        <ThemedText type="subtitle">{candidate.fullName}</ThemedText>
-        {candidate.headline ? (
-          <ThemedText themeColor="textSecondary">{candidate.headline}</ThemedText>
-        ) : null}
-        <View style={styles.metaRow}>
-          {candidate.location ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              📍 {candidate.location}
-            </ThemedText>
-          ) : null}
-          {candidate.yearsExperience !== undefined ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {Math.round(candidate.yearsExperience)} yrs experience
-            </ThemedText>
-          ) : null}
-        </View>
-        {candidate.skills && candidate.skills.length > 0 ? (
-          <View style={styles.skillRow}>
-            {candidate.skills.map((skill) => (
-              <View key={skill} style={styles.skillChip}>
-                <ThemedText type="small">{skill}</ThemedText>
-              </View>
-            ))}
-          </View>
-        ) : null}
-      </View>
-    </ThemedView>
-  );
-}
-
 function ActionButton({
   label,
   color,
@@ -329,38 +267,6 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: Spacing.three,
     gap: Spacing.two,
-  },
-  card: {
-    borderRadius: Spacing.three,
-    overflow: 'hidden',
-  },
-  photo: {
-    width: '100%',
-    aspectRatio: 1,
-    backgroundColor: 'rgba(127,127,127,0.2)',
-  },
-  photoFallback: {
-    backgroundColor: 'rgba(127,127,127,0.2)',
-  },
-  cardBody: {
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.three,
-  },
-  skillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  skillChip: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-    borderRadius: 999,
-    backgroundColor: 'rgba(127,127,127,0.18)',
   },
   actions: {
     flexDirection: 'row',

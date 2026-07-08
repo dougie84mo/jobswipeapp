@@ -7,6 +7,9 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testPathIgnorePatterns: ['/node_modules/', '/legacy/'],
   moduleNameMapper: {
+    // CSS is a web-only side effect (constants/theme.ts imports global.css
+    // for the web build); stub it so component tests can import the theme.
+    '\\.(css)$': '<rootDir>/jest.style-stub.js',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
 };

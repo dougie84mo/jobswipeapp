@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { formatDateRange, initials } from '@/ats/candidate-utils';
 import { displayNameFor } from '@/ats/client';
 import type { ExecutedAction } from '@/ats/types';
 import { describeAction } from '@/features/swipes/action-labels';
@@ -69,13 +70,13 @@ export default function CandidateProfileScreen() {
   return (
     <Screen>
       <View style={styles.hero}>
-        {candidate.photo_url ? (
-          <Image source={{ uri: candidate.photo_url }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarFallback}>
-            <ThemedText type="title">{initials(candidate.full_name)}</ThemedText>
-          </View>
-        )}
+        <View style={styles.avatarFallback}>
+          {candidate.photo_url ? (
+            <Image source={{ uri: candidate.photo_url }} style={styles.avatar} />
+          ) : (
+            <ThemedText type="subtitle">{initials(candidate.full_name)}</ThemedText>
+          )}
+        </View>
         <ThemedText type="title" style={styles.name}>
           {candidate.full_name ?? 'Unnamed candidate'}
         </ThemedText>
@@ -115,6 +116,51 @@ export default function CandidateProfileScreen() {
         />
         <DetailRow icon="cloud-outline" text={sourceLabel} />
       </ThemedView>
+
+      {candidate.experience && candidate.experience.length > 0 ? (
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <ThemedText type="smallBold">Experience</ThemedText>
+          {candidate.experience.map((entry, i) => {
+            const range = formatDateRange(entry);
+            const detail = [entry.company, range].filter(Boolean).join(' · ');
+            return (
+              <View key={i} style={styles.entryRow}>
+                <ThemedText type="small" style={styles.entryTitle}>
+                  {entry.title ?? entry.company ?? 'Role'}
+                </ThemedText>
+                {detail && detail !== entry.title ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {detail}
+                  </ThemedText>
+                ) : null}
+                {entry.summary ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {entry.summary}
+                  </ThemedText>
+                ) : null}
+              </View>
+            );
+          })}
+        </ThemedView>
+      ) : null}
+
+      {candidate.education && candidate.education.length > 0 ? (
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <ThemedText type="smallBold">Education</ThemedText>
+          {candidate.education.map((entry, i) => {
+            const degreeField = [entry.degree, entry.field]
+              .filter(Boolean)
+              .join(', ');
+            return (
+              <View key={i} style={styles.entryRow}>
+                <ThemedText type="small">
+                  {degreeField ? `${degreeField} — ${entry.school}` : entry.school}
+                </ThemedText>
+              </View>
+            );
+          })}
+        </ThemedView>
+      ) : null}
 
       {candidate.skills && candidate.skills.length > 0 ? (
         <ThemedView type="backgroundElement" style={styles.section}>
@@ -215,16 +261,6 @@ function DetailRow({
   );
 }
 
-function initials(name: string | null | undefined): string {
-  if (!name) return '?';
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join('');
-}
-
 function toMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';
 }
@@ -238,15 +274,20 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.six,
   },
   hero: { alignItems: 'center', gap: Spacing.two },
-  avatar: { width: 96, height: 96, borderRadius: 48 },
+  // Identity circle is deliberately small (info-first design): initials are
+  // the common case, a provider photo renders inside the same circle.
+  avatar: { width: 64, height: 64 },
   avatarFallback: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     backgroundColor: 'rgba(127,127,127,0.18)',
   },
+  entryRow: { gap: 2 },
+  entryTitle: { fontWeight: '600' },
   name: { textAlign: 'center' },
   centered: { textAlign: 'center' },
   directionPill: {
