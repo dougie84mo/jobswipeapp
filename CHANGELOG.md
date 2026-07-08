@@ -11,6 +11,26 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-07 — Dev-client migration (phase 4)
+
+### Added
+- **expo-dev-client** (+ expo-web-browser, ahead of the Stripe checkout
+  flow). EAS project created and linked: `@jdfan/recruit-swipe`
+  (`extra.eas.projectId` now in app.json). `expo-notifications` config
+  plugin added (default Android channel). Push-token registration needed no
+  code change — `register.ts` already reads the EAS projectId and no-ops in
+  Expo Go.
+- First Android development build kicked off on EAS
+  (`eas build --profile development --platform android`).
+
+### Remaining (user)
+- iOS dev build (`eas build --profile development --platform ios`) — needs
+  the Apple Developer account sign-in.
+- Push credentials (`eas credentials`): iOS APNs key (EAS-managed);
+  Android `google-services.json` + FCM v1 service account for real
+  delivery.
+- Install the dev build on-device, run `npx expo start --dev-client`.
+
 ## 2026-07-07 — Candidate preference filters (phase 3)
 
 ### Added

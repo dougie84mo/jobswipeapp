@@ -36,11 +36,25 @@
             "imageWidth": 76
           }
         }
+      ],
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "default"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bf856ec0-7478-4642-a2cd-c8ce165a143b"
+      }
+    },
+    "owner": "jdfan"
   }
 }
