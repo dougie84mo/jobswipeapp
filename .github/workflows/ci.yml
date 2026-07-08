@@ -69,10 +69,10 @@ jobs:
       - name: Start Supabase (applies migrations)
         run: supabase start
 
-      - name: RLS isolation tests
+      - name: RLS isolation + team-sharing tests
         # URL/keys fall back to the CLI's well-known local defaults inside the
-        # test, so no env wiring is needed here.
-        run: deno test --allow-net --allow-env --no-check supabase/tests/rls/isolation.test.ts
+        # tests, so no env wiring is needed here.
+        run: deno test --allow-net --allow-env --no-check supabase/tests/rls/
 
       - name: Stop Supabase
         if: always()

@@ -11,6 +11,56 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-07 — Teams: schema, invites, sharing + RLS rewrite (phase 5)
+
+### Added
+- **Teams** (migration `0018`): `teams` / `team_members`
+  (owner|admin|member) / `team_invites` (by email, lowercased; pending →
+  accepted|revoked; partial-unique per live invite). One model covers org
+  recruitment teams AND freelance partner pairs (a partnership is a
+  2-person team). STABLE SECURITY DEFINER membership helpers
+  (`is_team_member`, `is_team_admin`, `shares_team_with`) power all
+  policies without RLS recursion. RPCs: `create_team`, `invite_to_team`
+  (instant-add when the email already has an account), **`claim_team_invites`**
+  (called once per session — covers invite-before-signup), `leave_team`
+  (last owner must transfer/delete), `remove_team_member` (role-gated).
+- **Connection sharing** (migration `0019`):
+  `integrations.shared_team_id` (owner picks at most one team; null =
+  private). Additive SELECT policies — teammates read the shared
+  integration, its requisitions/candidates caches, each other's `swipes`
+  (shared shortlist), and profile display names; every write policy stays
+  owner/author-only. **`read_integration_credentials` v2** decrypts for
+  teammates of the shared team (plaintext still never leaves the edge
+  function; zero ats-proxy code changes needed — its lookups run under the
+  caller's JWT). `record_swipe` v5 / `set_notification_topic` v2 /
+  `set_requisition_filters` v2 accept teammates via a shared
+  `can_use_integration` predicate. `list_activity_for_integration` v2
+  (return type changed → drop/recreate) includes teammate swipes +
+  `swiper_user_id`/`swiper_display_name`. ⚠️ Teammate ATS writes attribute
+  to the owner's ATS identity — surfaced in the share-toggle UI copy
+  (phase 6).
+- **Per-member swipe-action settings** (migration `0020`):
+  `integration_settings.user_id` (backfilled from the integration owner,
+  NOT NULL; unique key now `(integration_id, direction, user_id)`). The
+  owner's rows are the team defaults; members read them and save personal
+  overrides. RLS: full control of your own rows on any usable integration +
+  SELECT of the owner's rows on shared ones. ⚠️ App upsert conflict target
+  changes in phase 6.
+- **`supabase/tests/rls/team-sharing.test.ts`** — full lifecycle against a
+  local stack: teammate reads (and NOT the owner's unshared integration),
+  credential decryption (teammate yes / outsider no / unshared no),
+  teammate record_swipe visible to the owner, activity attribution, forged
+  settings rows rejected, pending-invite claim by a brand-new account, and
+  total revocation after `leave_team`. CI's rls job now runs the whole
+  `supabase/tests/rls/` directory. **Both suites green locally.**
+
+### Fixed
+- `notification_topics` unique key lacked `user_id` — two teammates
+  subscribing to the same requisition would have collided. Key is now
+  `(user_id, integration_id, requisition_external_id)` (0019), and
+  `set_notification_topic`'s upsert target updated with it.
+- `supabase/seed.sql` seeds `integration_settings.user_id`.
+
 ## 2026-07-07 — Dev-client migration (phase 4)
 
 ### Added

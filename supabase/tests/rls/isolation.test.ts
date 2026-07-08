@@ -148,6 +148,7 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
         integration_id: integrationId,
         direction: "right",
         actions: [],
+        user_id: userA, // required since 0020 (per-member settings)
       });
     if (setErr) throw new Error(`seed integration_settings: ${setErr.message}`);
 

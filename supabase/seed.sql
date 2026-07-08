@@ -58,9 +58,10 @@ begin
     (mock_integration_id, mock_req_id, 'cand-002', 'Priya Shankar',  'Senior Engineer at Globex','San Francisco, CA',array['Rust','gRPC','AWS'],            7,   '{}'::jsonb),
     (mock_integration_id, mock_req_id, 'cand-003', 'Jordan Lee',     'Engineer at Initech',      'Remote (CA)',     array['Node','TypeScript','Postgres'], 5,   '{}'::jsonb);
 
-  -- Default per-direction swipe actions for the mock integration
-  insert into public.integration_settings (integration_id, direction, actions) values
-    (mock_integration_id, 'right', '[{"type":"local_only"}]'::jsonb),
-    (mock_integration_id, 'left',  '[{"type":"local_only"}]'::jsonb),
-    (mock_integration_id, 'up',    '[{"type":"local_only"}]'::jsonb);
+  -- Default per-direction swipe actions for the mock integration. Since 0020,
+  -- settings rows carry the member's user_id (owner rows = team defaults).
+  insert into public.integration_settings (integration_id, direction, actions, user_id) values
+    (mock_integration_id, 'right', '[{"type":"local_only"}]'::jsonb, mock_user_id),
+    (mock_integration_id, 'left',  '[{"type":"local_only"}]'::jsonb, mock_user_id),
+    (mock_integration_id, 'up',    '[{"type":"local_only"}]'::jsonb, mock_user_id);
 end$$;
