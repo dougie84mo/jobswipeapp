@@ -11,6 +11,7 @@ import {
   useIntegrations,
   type IntegrationRow,
 } from '@/features/integrations/queries';
+import { useProfileNames } from '@/features/teams/queries';
 import { sourceKindFor, type ProviderId, type SourceKind } from '@/ats/types';
 import { displayNameFor } from '@/ats/client';
 
@@ -27,8 +28,25 @@ export default function ConnectionsScreen() {
     session.status === 'ready' && session.session
       ? session.session.user.email
       : undefined;
+  const userId =
+    session.status === 'ready' && session.session
+      ? session.session.user.id
+      : undefined;
 
   const rows = integrationsQuery.data ?? [];
+  // RLS also returns connections teammates shared with us — label those.
+  const sharedOwnerIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (integrationsQuery.data ?? [])
+            .filter((r) => userId && r.user_id !== userId)
+            .map((r) => r.user_id),
+        ),
+      ),
+    [integrationsQuery.data, userId],
+  );
+  const ownerNames = useProfileNames(sharedOwnerIds);
   // Bucket connected sources by kind so each group renders under its own
   // header. Order: ATS first, job boards second. Depend on the query data
   // (not the `?? []` alias, which is a fresh array every render).
@@ -91,6 +109,11 @@ export default function ConnectionsScreen() {
                     <IntegrationCard
                       key={item.id}
                       item={item}
+                      sharedBy={
+                        userId && item.user_id !== userId
+                          ? ownerNames.data?.[item.user_id] ?? 'a teammate'
+                          : undefined
+                      }
                       onPress={() => router.push(`/integration/${item.id}`)}
                     />
                   ))}
@@ -107,9 +130,12 @@ export default function ConnectionsScreen() {
 function IntegrationCard({
   item,
   onPress,
+  sharedBy,
 }: {
   item: IntegrationRow;
   onPress: () => void;
+  /** Set when a teammate owns this connection (team-shared with us). */
+  sharedBy?: string;
 }) {
   const connectedAt = new Date(item.connected_at);
   const kind = sourceKindFor(item.provider as ProviderId);
@@ -126,10 +152,25 @@ function IntegrationCard({
           <ThemedText type="smallBold">
             {item.display_label ?? displayNameFor(item.provider as ProviderId)}
           </ThemedText>
-          <View style={styles.kindPill}>
-            <ThemedText type="small">
-              {kind === 'job_board' ? 'Job board' : 'ATS'}
-            </ThemedText>
+          <View style={styles.pillRow}>
+            {sharedBy ? (
+              <View style={styles.sharedPill}>
+                <ThemedText type="small" style={styles.sharedPillText}>
+                  Shared by {sharedBy}
+                </ThemedText>
+              </View>
+            ) : item.shared_team_id ? (
+              <View style={styles.sharedPill}>
+                <ThemedText type="small" style={styles.sharedPillText}>
+                  Shared
+                </ThemedText>
+              </View>
+            ) : null}
+            <View style={styles.kindPill}>
+              <ThemedText type="small">
+                {kind === 'job_board' ? 'Job board' : 'ATS'}
+              </ThemedText>
+            </View>
           </View>
         </View>
         <ThemedText type="small" themeColor="textSecondary">
@@ -184,5 +225,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(127,127,127,0.18)',
   },
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  sharedPill: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: 999,
+    backgroundColor: 'rgba(32,138,239,0.18)',
+  },
+  sharedPillText: { color: '#208AEF', fontWeight: '600' },
   pressed: { opacity: 0.7 },
 });

@@ -19,6 +19,9 @@ export interface IntegrationRow {
   status: 'active' | 'expired' | 'revoked';
   connected_at: string;
   last_synced_at: string | null;
+  /** Team this connection is shared with (null = private). RLS also returns
+   * OTHER users' rows shared with a team the caller belongs to. */
+  shared_team_id: string | null;
 }
 
 const KEY = ['integrations'] as const;
@@ -29,7 +32,7 @@ export function useIntegrations() {
     queryFn: async (): Promise<IntegrationRow[]> => {
       const { data, error } = await getSupabase()
         .from('integrations')
-        .select('id, user_id, provider, display_label, status, connected_at, last_synced_at')
+        .select('id, user_id, provider, display_label, status, connected_at, last_synced_at, shared_team_id')
         .order('connected_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as IntegrationRow[];
@@ -45,7 +48,7 @@ export function useIntegration(id: string | undefined) {
       if (!id) return null;
       const { data, error } = await getSupabase()
         .from('integrations')
-        .select('id, user_id, provider, display_label, status, connected_at, last_synced_at')
+        .select('id, user_id, provider, display_label, status, connected_at, last_synced_at, shared_team_id')
         .eq('id', id)
         .maybeSingle();
       if (error) throw error;

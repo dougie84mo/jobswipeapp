@@ -25,6 +25,10 @@ export interface ActivityRow {
   candidate_headline: string | null;
   requisition_external_id: string;
   requisition_title: string;
+  // Since the team-sharing RPC v2, the feed includes teammate swipes on a
+  // shared connection, attributed by these two fields.
+  swiper_user_id: string;
+  swiper_display_name: string | null;
 }
 
 export function useActivity(integrationId: string | undefined) {

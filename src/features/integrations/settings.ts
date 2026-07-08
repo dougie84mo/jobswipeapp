@@ -1,5 +1,10 @@
 // integration_settings — the per-integration, per-direction action list
 // that drives what happens in the ATS when the recruiter swipes.
+//
+// Since migration 0020 rows are per-member: unique on (integration_id,
+// direction, user_id). On a team-shared connection RLS returns the caller's
+// own rows plus the OWNER's rows (the team defaults); actionsForDirection
+// resolves inheritance — your row for a direction wins, else the owner's.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -11,6 +16,7 @@ export interface IntegrationSettingsRow {
   integration_id: string;
   direction: SwipeDirection;
   actions: ActionDescriptor[];
+  user_id: string;
 }
 
 function settingsKey(integrationId: string) {
@@ -25,7 +31,7 @@ export function useIntegrationSettings(integrationId: string | undefined) {
       if (!integrationId) return [];
       const { data, error } = await getSupabase()
         .from('integration_settings')
-        .select('id, integration_id, direction, actions')
+        .select('id, integration_id, direction, actions, user_id')
         .eq('integration_id', integrationId);
       if (error) throw error;
       return (data ?? []) as IntegrationSettingsRow[];
@@ -37,6 +43,8 @@ export interface UpsertSettingsInput {
   integrationId: string;
   direction: SwipeDirection;
   actions: ActionDescriptor[];
+  /** The signed-in user — rows are per-member since 0020. */
+  userId: string;
 }
 
 export function useUpsertIntegrationSettings() {
@@ -50,8 +58,9 @@ export function useUpsertIntegrationSettings() {
             integration_id: input.integrationId,
             direction: input.direction,
             actions: input.actions,
+            user_id: input.userId,
           },
-          { onConflict: 'integration_id,direction' },
+          { onConflict: 'integration_id,direction,user_id' },
         );
       if (error) throw error;
     },
@@ -61,10 +70,20 @@ export function useUpsertIntegrationSettings() {
   });
 }
 
+/**
+ * Resolve the action list for a direction with team inheritance: the
+ * caller's own row wins; otherwise any other visible row for the direction
+ * (RLS guarantees that can only be the connection owner's team default).
+ */
 export function actionsForDirection(
   rows: IntegrationSettingsRow[] | undefined,
   direction: SwipeDirection,
+  userId: string | undefined,
 ): ActionDescriptor[] {
   if (!rows) return [];
-  return rows.find((r) => r.direction === direction)?.actions ?? [];
+  const forDirection = rows.filter((r) => r.direction === direction);
+  const own = userId
+    ? forDirection.find((r) => r.user_id === userId)
+    : undefined;
+  return (own ?? forDirection[0])?.actions ?? [];
 }

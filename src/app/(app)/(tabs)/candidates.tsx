@@ -1,17 +1,25 @@
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { initials } from '@/ats/candidate-utils';
 import { displayNameFor } from '@/ats/client';
-import { useMatches, type MatchRow } from '@/features/swipes/matches';
+import { useSession } from '@/features/auth/SessionProvider';
+import { useMyTeams, useProfileNames } from '@/features/teams/queries';
+import {
+  type MatchRow,
+  type MatchScope,
+  useMatches,
+} from '@/features/swipes/matches';
 
-// Matched candidates — the recruiter's positive swipes (Save / Boost) across
-// every connected source. Pass swipes stay on the per-integration Activity
-// screen; this tab is the shortlist.
+// Matched candidates — positive swipes (Save / Boost) across every connected
+// source. The Team scope adds teammates' saves (RLS returns them once you
+// share a team); "Saved by {name}" marks the ones that aren't yours.
 
 const DIRECTION_LABEL: Record<MatchRow['direction'], string> = {
   right: 'Saved',
@@ -24,8 +32,25 @@ const DIRECTION_COLOR: Record<MatchRow['direction'], string> = {
 };
 
 export default function CandidatesScreen() {
-  const matchesQuery = useMatches();
+  const session = useSession();
+  const userId =
+    session.status === 'ready' && session.session
+      ? session.session.user.id
+      : undefined;
+  const [scope, setScope] = useState<MatchScope>('mine');
+  const teamsQuery = useMyTeams();
+  const hasTeam = (teamsQuery.data ?? []).length > 0;
+  const matchesQuery = useMatches(scope, userId);
   const rows = matchesQuery.data ?? [];
+
+  const teammateIds = useMemo(
+    () =>
+      Array.from(
+        new Set(rows.filter((r) => r.user_id !== userId).map((r) => r.user_id)),
+      ),
+    [rows, userId],
+  );
+  const names = useProfileNames(teammateIds);
 
   return (
     <ThemedView style={styles.container}>
@@ -35,6 +60,21 @@ export default function CandidatesScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {hasTeam ? (
+            <View style={styles.scopeRow}>
+              <ScopeButton
+                label="Mine"
+                active={scope === 'mine'}
+                onPress={() => setScope('mine')}
+              />
+              <ScopeButton
+                label="Team"
+                active={scope === 'team'}
+                onPress={() => setScope('team')}
+              />
+            </View>
+          ) : null}
+
           {matchesQuery.isLoading ? (
             <ThemedText themeColor="textSecondary">Loading…</ThemedText>
           ) : matchesQuery.isError ? (
@@ -43,14 +83,26 @@ export default function CandidatesScreen() {
             </ThemedText>
           ) : rows.length === 0 ? (
             <ThemedView type="backgroundElement" style={styles.empty}>
-              <ThemedText type="smallBold">No matches yet</ThemedText>
+              <ThemedText type="smallBold">
+                {scope === 'team' ? 'No team matches yet' : 'No matches yet'}
+              </ThemedText>
               <ThemedText themeColor="textSecondary">
                 Candidates you Save or Boost in the swipe deck land here. Pick
                 a requisition from the Connections tab to start swiping.
               </ThemedText>
             </ThemedView>
           ) : (
-            rows.map((row) => <MatchCard key={row.id} row={row} />)
+            rows.map((row) => (
+              <MatchCard
+                key={row.id}
+                row={row}
+                savedBy={
+                  row.user_id !== userId
+                    ? names.data?.[row.user_id] ?? 'a teammate'
+                    : undefined
+                }
+              />
+            ))
           )}
         </ScrollView>
       </SafeAreaView>
@@ -58,7 +110,34 @@ export default function CandidatesScreen() {
   );
 }
 
-function MatchCard({ row }: { row: MatchRow }) {
+function ScopeButton({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={({ pressed }) => [
+        styles.scopeButton,
+        active && styles.scopeButtonActive,
+        pressed && styles.pressed,
+      ]}
+    >
+      <ThemedText type="small" style={active ? styles.scopeLabelActive : undefined}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
+function MatchCard({ row, savedBy }: { row: MatchRow; savedBy?: string }) {
   const integration = row.candidate?.integration ?? null;
   const sourceLabel = integration
     ? (integration.display_label ?? displayNameFor(integration.provider))
@@ -72,15 +151,15 @@ function MatchCard({ row }: { row: MatchRow }) {
     >
       <ThemedView type="backgroundElement" style={styles.card}>
         <View style={styles.cardRow}>
-          {row.candidate?.photo_url ? (
-            <Image source={{ uri: row.candidate.photo_url }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarFallback}>
+          <View style={styles.avatarFallback}>
+            {row.candidate?.photo_url ? (
+              <Image source={{ uri: row.candidate.photo_url }} style={styles.avatar} />
+            ) : (
               <ThemedText type="smallBold">
                 {initials(row.candidate?.full_name)}
               </ThemedText>
-            </View>
-          )}
+            )}
+          </View>
           <View style={styles.cardBody}>
             <View style={styles.nameRow}>
               <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
@@ -106,21 +185,16 @@ function MatchCard({ row }: { row: MatchRow }) {
               {row.requisition?.title ?? 'Unknown requisition'} • {sourceLabel} •{' '}
               {swipedAt.toLocaleDateString()}
             </ThemedText>
+            {savedBy ? (
+              <ThemedText type="small" style={styles.savedBy} numberOfLines={1}>
+                Saved by {savedBy}
+              </ThemedText>
+            ) : null}
           </View>
         </View>
       </ThemedView>
     </Pressable>
   );
-}
-
-function initials(name: string | null | undefined): string {
-  if (!name) return '?';
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join('');
 }
 
 function toMessage(err: unknown): string {
@@ -135,6 +209,19 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingBottom: Spacing.six,
   },
+  scopeRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  scopeButton: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: 999,
+    backgroundColor: 'rgba(127,127,127,0.18)',
+  },
+  scopeButtonActive: { backgroundColor: '#208AEF' },
+  scopeLabelActive: { color: 'white', fontWeight: '600' },
   empty: {
     padding: Spacing.four,
     borderRadius: Spacing.three,
@@ -158,17 +245,14 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   name: { flexShrink: 1 },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
+  avatar: { width: 44, height: 44 },
   avatarFallback: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     backgroundColor: 'rgba(127,127,127,0.18)',
   },
   directionPill: {
@@ -177,5 +261,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   directionText: { color: 'white', fontWeight: '700' },
+  savedBy: { color: '#208AEF', fontWeight: '600' },
   pressed: { opacity: 0.7 },
 });

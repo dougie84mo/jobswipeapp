@@ -11,6 +11,39 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-07 — Team UX (phase 6)
+
+### Added
+- **Recruit Team screen is real** (`/settings/team` replaces the stub):
+  create teams (works for org teams and 2-person freelance partnerships),
+  invite by email (pending invites listed with revoke; existing accounts
+  join instantly), member list with roles, remove member (role-gated),
+  leave / delete team with confirmations. `claim_team_invites` fires once
+  per session from the app layout (alongside push registration) so
+  invited-before-signup accounts join automatically.
+- **`src/features/teams/queries.ts`** — teams/members/invites queries +
+  create/invite/revoke/leave/remove/delete mutations,
+  `useSetIntegrationSharedTeam`, `useProfileNames` (teammate display-name
+  lookup), `claimTeamInvites`.
+- **Connections tab**: team-shared rows surface automatically via RLS with
+  a "Shared by {name}" pill (your own shared connections show "Shared");
+  detail screens work end-to-end for teammates.
+- **Integration detail**: owner-only "Share this connection with a team"
+  row — the confirm dialog states that teammates act through YOUR
+  credentials and ATS actions attribute to your account; unshare warns
+  about immediate access loss.
+- **Candidates tab**: Mine / Team scope toggle (shown once you're in a
+  team); team scope adds teammates' saves with "Saved by {name}".
+- **Activity screen**: teammate swipes attributed ("by {name}"); the
+  retry button stays own-swipes-only.
+
+### Changed
+- **Swipe-action settings are per-member** (app side of migration 0020):
+  upsert targets `(integration_id, direction, user_id)`;
+  `actionsForDirection(rows, direction, userId)` resolves inheritance —
+  your row wins, else the owner's team default (Jest-covered). The settings
+  screen labels shared connections ("editing your personal overrides…").
+
 ## 2026-07-07 — Teams: schema, invites, sharing + RLS rewrite (phase 5)
 
 ### Added

@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useSession } from '@/features/auth/SessionProvider';
 import { useIntegration } from '@/features/integrations/queries';
 import { useRequisitions } from '@/features/integrations/requisitions';
 import {
@@ -55,6 +56,17 @@ export default function IntegrationSettingsScreen() {
   const integration = integrationQuery.data ?? null;
   const settingsQuery = useIntegrationSettings(id);
   const upsert = useUpsertIntegrationSettings();
+  const session = useSession();
+  const userId =
+    session.status === 'ready' && session.session
+      ? session.session.user.id
+      : undefined;
+  // On a team-shared connection a non-owner edits their PERSONAL overrides;
+  // until they save, the drafts show the owner's team defaults.
+  const isOwner = Boolean(integration && userId && integration.user_id === userId);
+  const hasOwnRow = Boolean(
+    userId && (settingsQuery.data ?? []).some((r) => r.user_id === userId),
+  );
   const requisitionsQuery = useRequisitions(integration);
   // Stages can vary per requisition for some providers, but at the
   // integration-settings level we pick from the first requisition's stages.
@@ -103,21 +115,22 @@ export default function IntegrationSettingsScreen() {
   });
   const [dirty, setDirty] = useState(false);
 
-  // Seed the draft once the settings query lands.
+  // Seed the draft once the settings query lands (inheritance-resolved: own
+  // rows win, else the owner's team defaults).
   useEffect(() => {
     if (settingsQuery.data && !dirty) {
       setDraft({
-        right: actionsForDirection(settingsQuery.data, 'right'),
-        left: actionsForDirection(settingsQuery.data, 'left'),
-        up: actionsForDirection(settingsQuery.data, 'up'),
+        right: actionsForDirection(settingsQuery.data, 'right', userId),
+        left: actionsForDirection(settingsQuery.data, 'left', userId),
+        up: actionsForDirection(settingsQuery.data, 'up', userId),
       });
     }
-  }, [settingsQuery.data, dirty]);
+  }, [settingsQuery.data, dirty, userId]);
 
   const [pickerState, setPickerState] = useState<PickerState>(null);
 
   async function handleSave() {
-    if (!integration) return;
+    if (!integration || !userId) return;
     try {
       await Promise.all(
         (['right', 'left', 'up'] as SwipeDirection[]).map((direction) =>
@@ -125,6 +138,7 @@ export default function IntegrationSettingsScreen() {
             integrationId: integration.id,
             direction,
             actions: draft[direction],
+            userId,
           }),
         ),
       );
@@ -215,6 +229,13 @@ export default function IntegrationSettingsScreen() {
                   when you swipe. Actions run top-to-bottom on each swipe; the outcome is
                   recorded on the swipe history.
                 </ThemedText>
+                {!isOwner ? (
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.sharedNote}>
+                    {hasOwnRow
+                      ? 'Shared connection — you’re editing your personal overrides of the team defaults.'
+                      : 'Shared connection — these are the team defaults. Saving creates your personal overrides.'}
+                  </ThemedText>
+                ) : null}
               </View>
             }
             renderItem={({ item: direction }) => (
@@ -482,7 +503,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1, padding: Spacing.four },
   listContent: { gap: Spacing.three, paddingBottom: Spacing.four },
-  header: { marginBottom: Spacing.three },
+  header: { marginBottom: Spacing.three, gap: Spacing.two },
+  sharedNote: { fontStyle: 'italic' },
   section: {
     padding: Spacing.three,
     borderRadius: Spacing.three,

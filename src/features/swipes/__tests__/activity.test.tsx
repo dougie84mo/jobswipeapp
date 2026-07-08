@@ -51,6 +51,8 @@ const baseRow: ActivityRow = {
   candidate_headline: null,
   requisition_external_id: 'req-1',
   requisition_title: 'Engineer',
+  swiper_user_id: 'user-1',
+  swiper_display_name: 'Test Recruiter',
 };
 
 beforeEach(() => {

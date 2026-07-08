@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useSession } from '@/features/auth/SessionProvider';
 import { useIntegration } from '@/features/integrations/queries';
 import { describeAction } from '@/features/swipes/action-labels';
 import {
@@ -45,6 +46,11 @@ export default function ActivityScreen() {
   const integrationQuery = useIntegration(id);
   const activityQuery = useActivity(id);
   const provider = integrationQuery.data?.provider as ProviderId | undefined;
+  const session = useSession();
+  const userId =
+    session.status === 'ready' && session.session
+      ? session.session.user.id
+      : undefined;
 
   return (
     <ThemedView style={styles.container}>
@@ -82,6 +88,7 @@ export default function ActivityScreen() {
                 item={item}
                 integrationId={id}
                 provider={provider}
+                isOwnSwipe={!userId || item.swiper_user_id === userId}
               />
             )}
           />
@@ -95,10 +102,13 @@ function ActivityCard({
   item,
   integrationId,
   provider,
+  isOwnSwipe,
 }: {
   item: ActivityRow;
   integrationId: string;
   provider: ProviderId | undefined;
+  /** Teammate swipes render an attribution line and hide the retry button. */
+  isOwnSwipe: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [retryingIndex, setRetryingIndex] = useState<number | null>(null);
@@ -150,6 +160,11 @@ function ActivityCard({
             <ThemedText type="small" themeColor="textSecondary">
               {item.requisition_title}
             </ThemedText>
+            {!isOwnSwipe ? (
+              <ThemedText type="small" style={styles.swiperName}>
+                by {item.swiper_display_name ?? 'a teammate'}
+              </ThemedText>
+            ) : null}
           </View>
           <View style={styles.directionPill}>
             <View
@@ -189,7 +204,7 @@ function ActivityCard({
                     </ThemedText>
                   ) : null}
                 </View>
-                {a.status === 'failure' ? (
+                {a.status === 'failure' && isOwnSwipe ? (
                   <Pressable
                     onPress={(e) => {
                       // Card root is also pressable (toggles open/closed);
@@ -294,6 +309,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   retryButtonText: { color: 'white', fontWeight: '700', fontSize: 12 },
+  swiperName: { color: '#208AEF', fontWeight: '600' },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
 });

@@ -144,7 +144,7 @@ export default function SwipeDeckScreen() {
     ) {
       candidatesQuery.fetchNextPage();
     }
-    const actions = actionsForDirection(settingsQuery.data, direction);
+    const actions = actionsForDirection(settingsQuery.data, direction, userId);
     let executedActions: ExecutedAction[] = [];
     try {
       executedActions = await executeActions(

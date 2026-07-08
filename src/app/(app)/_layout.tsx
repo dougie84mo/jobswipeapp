@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { useSession } from '@/features/auth/SessionProvider';
 import { registerPushToken } from '@/features/notifications/register';
+import { claimTeamInvites } from '@/features/teams/queries';
 
 export default function AppLayout() {
   const session = useSession();
@@ -15,9 +16,12 @@ export default function AppLayout() {
   // Re-register the device's push token on every sign-in. The RPC is
   // idempotent (UPSERT on expo_push_token) and silently no-ops in Expo Go
   // where getExpoPushTokenAsync isn't available — see register.ts.
+  // claim_team_invites is likewise idempotent: it joins any teams whose
+  // invite email matches this account (covers invited-before-signup).
   useEffect(() => {
     if (!userId) return;
     void registerPushToken();
+    void claimTeamInvites();
   }, [userId]);
 
   if (session.status === 'loading') {

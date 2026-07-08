@@ -15,10 +15,14 @@ import type {
 
 export const MATCHES_KEY = ['matches'] as const;
 
+/** 'mine' = my swipes only; 'team' = mine + teammates' (RLS scopes it). */
+export type MatchScope = 'mine' | 'team';
+
 export interface MatchRow {
   id: string;
   direction: 'right' | 'up';
   created_at: string;
+  user_id: string;
   candidate: {
     id: string;
     full_name: string | null;
@@ -37,20 +41,26 @@ export interface MatchRow {
   } | null;
 }
 
-export function useMatches() {
+export function useMatches(scope: MatchScope, userId: string | undefined) {
   return useQuery({
-    queryKey: MATCHES_KEY,
+    queryKey: [...MATCHES_KEY, scope, userId ?? null],
+    enabled: Boolean(userId),
     queryFn: async (): Promise<MatchRow[]> => {
-      const { data, error } = await getSupabase()
+      let query = getSupabase()
         .from('swipes')
         .select(
-          'id, direction, created_at, ' +
+          'id, direction, created_at, user_id, ' +
             'candidate:candidates(id, full_name, headline, location, photo_url, ' +
             'integration:integrations(id, provider, display_label)), ' +
             'requisition:requisitions(id, title)',
         )
         .in('direction', ['right', 'up'])
         .order('created_at', { ascending: false });
+      // Team scope drops the self filter: RLS returns own + teammates' rows.
+      if (scope === 'mine' && userId) {
+        query = query.eq('user_id', userId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as unknown as MatchRow[];
     },
