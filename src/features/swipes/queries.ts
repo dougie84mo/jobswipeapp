@@ -17,6 +17,8 @@ import type {
   Requisition,
   SwipeDirection,
 } from '@/ats/types';
+import { candidatePassesFilters, filtersKey } from '@/features/filters/predicate';
+import type { CandidateFilters } from '@/features/filters/types';
 import type { IntegrationRow } from '@/features/integrations/queries';
 import { MATCHES_KEY } from '@/features/swipes/matches';
 import { getSupabase } from '@/lib/supabase';
@@ -52,6 +54,15 @@ export interface DeckResult {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   fetchNextPage: () => void;
+  /** Candidates dropped by the recruiter's filters across loaded pages. */
+  filteredOutCount: number;
+}
+
+// A deck page plus how many candidates the preference filters removed from
+// it (the already-swiped filter doesn't count — those aren't "hidden", they
+// are done).
+interface DeckPage extends Page<Candidate> {
+  filteredOut: number;
 }
 
 // Candidates for the swipe deck, paged on demand. Each page is fetched with an
@@ -65,15 +76,23 @@ export interface DeckResult {
 export function useDeckCandidates(
   integration: IntegrationRow | null | undefined,
   requisitionExternalId: string | undefined,
+  filters: CandidateFilters = {},
 ): DeckResult {
   const enabled = Boolean(integration && requisitionExternalId);
   const query = useInfiniteQuery({
-    queryKey: ['deck', integration?.id ?? null, requisitionExternalId ?? null],
+    // filtersKey in the query key: editing filters mounts a fresh deck (the
+    // screen resets its top index off the same key change).
+    queryKey: [
+      'deck',
+      integration?.id ?? null,
+      requisitionExternalId ?? null,
+      filtersKey(filters),
+    ],
     enabled,
     initialPageParam: '',
-    queryFn: async ({ pageParam }): Promise<Page<Candidate>> => {
+    queryFn: async ({ pageParam }): Promise<DeckPage> => {
       if (!integration || !requisitionExternalId) {
-        return { items: [], nextCursor: null };
+        return { items: [], nextCursor: null, filteredOut: 0 };
       }
       const [page, swiped] = await Promise.all([
         listCandidates(
@@ -83,9 +102,12 @@ export function useDeckCandidates(
         ),
         fetchSwipedExternalIds(integration.id, requisitionExternalId),
       ]);
+      const unswiped = page.items.filter((c) => !swiped.has(c.externalId));
+      const items = unswiped.filter((c) => candidatePassesFilters(c, filters));
       return {
-        items: page.items.filter((c) => !swiped.has(c.externalId)),
+        items,
         nextCursor: page.nextCursor,
+        filteredOut: unswiped.length - items.length,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -99,13 +121,15 @@ export function useDeckCandidates(
     void queryFetchNextPage();
   }, [queryFetchNextPage]);
 
+  const pages = query.data?.pages ?? [];
   return {
-    candidates: (query.data?.pages ?? []).flatMap((p) => p.items),
+    candidates: pages.flatMap((p) => p.items),
     isLoading: query.isLoading,
     isError: query.isError,
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     fetchNextPage,
+    filteredOutCount: pages.reduce((acc, p) => acc + p.filteredOut, 0),
   };
 }
 

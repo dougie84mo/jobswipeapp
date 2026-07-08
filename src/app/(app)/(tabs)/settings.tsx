@@ -87,6 +87,12 @@ export default function SettingsScreen() {
             />
             <RowDivider />
             <NavRow
+              icon="funnel-outline"
+              label="Candidate filters"
+              onPress={() => router.push('/settings/candidate-filters')}
+            />
+            <RowDivider />
+            <NavRow
               icon="card-outline"
               label="Subscriptions"
               detail="Free plan"

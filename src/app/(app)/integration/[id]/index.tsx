@@ -106,6 +106,16 @@ export default function IntegrationDetailScreen() {
                       enabled: !alertsOn,
                     })
                   }
+                  onOpenFilters={() =>
+                    router.push({
+                      pathname: '/requisition-filters',
+                      params: {
+                        integrationId: integration.id,
+                        reqId: item.externalId,
+                        reqTitle: item.title,
+                      },
+                    })
+                  }
                   onPress={() =>
                     router.push({
                       pathname: '/swipe/[reqId]',
@@ -128,12 +138,14 @@ function RequisitionCard({
   alertsOn,
   onToggleAlerts,
   toggleDisabled,
+  onOpenFilters,
 }: {
   item: Requisition;
   onPress: () => void;
   alertsOn: boolean;
   onToggleAlerts: () => void;
   toggleDisabled: boolean;
+  onOpenFilters: () => void;
 }) {
   return (
     <Pressable
@@ -147,7 +159,16 @@ function RequisitionCard({
             {[item.department, item.location].filter(Boolean).join(' • ')}
           </ThemedText>
         </View>
-        {/* Nested Pressable: taps toggle alerts without navigating into the deck. */}
+        {/* Nested Pressables: taps act on the row without navigating into the deck. */}
+        <Pressable
+          onPress={onOpenFilters}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Candidate filters for ${item.title}`}
+          style={({ pressed }) => [styles.bell, pressed && styles.pressed]}
+        >
+          <Ionicons name="funnel-outline" size={20} color="#8a8a8a" />
+        </Pressable>
         <Pressable
           onPress={onToggleAlerts}
           disabled={toggleDisabled}

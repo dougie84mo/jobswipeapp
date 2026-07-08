@@ -11,6 +11,47 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-07 — Candidate preference filters (phase 3)
+
+### Added
+- **Dating-app-style candidate filters**: skills (any/all), years of
+  experience (min/max), locations (substring any-of), education keywords,
+  and has-resume. **Missing-data rule:** a candidate missing a filtered
+  field passes unless that filter's *strict* toggle ("also exclude
+  candidates missing this info") is on — most sources send partial profiles,
+  so filters narrow on evidence rather than punish absence. has-resume is
+  inherently strict. Pure logic in `src/features/filters/predicate.ts`
+  (`candidatePassesFilters`, key-wise `effectiveFilters` merge where an
+  explicitly-emptied per-req section clears the global one, stable
+  `filtersKey`, `activeFilterCount`) — table-driven Jest suite.
+- **Two scopes**: global defaults in
+  `recruiter_profiles.app_prefs.candidate_filters` (Settings → Candidate
+  filters, new row + `/settings/candidate-filters`), per-requisition
+  overrides in the new **`requisition_filters`** table (migration `0017`,
+  RLS self-scoped, `set_requisition_filters` SECURITY DEFINER upsert RPC —
+  null filters deletes the override). Reachable from the deck's funnel
+  header icon (badged when active) and a funnel affordance on each
+  requisition row; editor seeds from global defaults, "Reset to my global
+  defaults" restores inheritance.
+- **UI primitives** `src/components/filter-controls.tsx`
+  (`ChipMultiSelectRow`, `MinMaxStepperRow`, `StrictToggleRow`) + shared
+  `FilterEditor` (draft/dirty/Save, same pattern as swipe-action settings).
+
+### Changed
+- **Deck query** applies filters per page after the already-swiped filter;
+  the query key includes `filtersKey` so edits mount a fresh deck (top index
+  resets); surfaces `filteredOutCount`. **Runaway-paging guard**: with
+  active filters, after 5 consecutive fully-hidden pages the deck stops
+  auto-paging and offers "Edit filters" instead of walking the provider's
+  whole pipeline; the all-caught-up card reports how many candidates the
+  filters hid. Matching skill-filter values render as accent chips on the
+  card (`highlightSkills`).
+- RLS isolation test now covers `requisition_filters` + the
+  `set_requisition_filters` ownership check.
+
+### Pending deploy (user)
+- `npx supabase db push` (0017 — after 0016).
+
 ## 2026-07-07 — Information-first candidate card + profile (phase 2)
 
 ### Added

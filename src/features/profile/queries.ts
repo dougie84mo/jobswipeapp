@@ -5,6 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { CandidateFilters } from '@/features/filters/types';
 import { getSupabase } from '@/lib/supabase';
 
 export interface NotificationPrefs {
@@ -15,6 +16,8 @@ export interface NotificationPrefs {
 
 export interface AppPrefs {
   gesture_swiping?: boolean;
+  /** Global candidate-filter defaults; per-req overrides live in requisition_filters. */
+  candidate_filters?: CandidateFilters;
   // Future UI / behavior toggles: haptics, deck stack size, theme override.
 }
 

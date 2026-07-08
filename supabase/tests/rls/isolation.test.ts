@@ -161,6 +161,16 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
       });
     if (topicErr) throw new Error(`seed notification_topics: ${topicErr.message}`);
 
+    const { error: filtErr } = await service
+      .from("requisition_filters")
+      .insert({
+        user_id: userA,
+        integration_id: integrationId,
+        requisition_external_id: "req-1",
+        filters: { hasResume: true },
+      });
+    if (filtErr) throw new Error(`seed requisition_filters: ${filtErr.message}`);
+
     // --- Sanity: A sees its own data --------------------------------------
     assertEquals((await A.from("integrations").select("id")).data?.length, 1);
     assertEquals((await A.from("requisitions").select("id")).data?.length, 1);
@@ -174,6 +184,10 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
       (await A.from("notification_topics").select("id")).data?.length,
       1,
     );
+    assertEquals(
+      (await A.from("requisition_filters").select("id")).data?.length,
+      1,
+    );
 
     // --- B is fully walled off (SELECT returns nothing) -------------------
     for (
@@ -184,6 +198,7 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
         "swipes",
         "integration_settings",
         "notification_topics",
+        "requisition_filters",
       ]
     ) {
       const { data, error } = await B.from(table).select("id");
@@ -232,6 +247,17 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
     assert(
       ins.error !== null,
       "B must not insert settings under A integration",
+    );
+
+    // The filters RPC verifies integration ownership before writing.
+    const rf = await B.rpc("set_requisition_filters", {
+      p_integration_id: integrationId,
+      p_requisition_external_id: "req-1",
+      p_filters: {},
+    });
+    assert(
+      rf.error !== null,
+      "B must not set requisition filters under A integration",
     );
   } finally {
     // Cascade-deletes each user's rows across all tables.
