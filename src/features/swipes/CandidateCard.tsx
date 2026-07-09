@@ -38,9 +38,20 @@ export interface CandidateCardProps {
    * filter values so matching chips pop without any scoring machinery.
    */
   highlightSkills?: string[];
+  /**
+   * 'deck' (default) fills its container and scrolls its body. 'compact'
+   * sizes to content in a plain View — for FlatList rows (Grade mode), where
+   * a nested ScrollView would fight the list's own scrolling — and trims to
+   * identity + meta + skills.
+   */
+  variant?: 'deck' | 'compact';
 }
 
-export function CandidateCard({ candidate, highlightSkills }: CandidateCardProps) {
+export function CandidateCard({
+  candidate,
+  highlightSkills,
+  variant = 'deck',
+}: CandidateCardProps) {
   const currentRole = candidate.experience?.[0];
   // One screen-reader node so the card announces as a sentence instead of
   // reading each chip separately.
@@ -63,6 +74,26 @@ export function CandidateCard({ candidate, highlightSkills }: CandidateCardProps
   ]
     .filter(Boolean)
     .join('. ');
+
+  if (variant === 'compact') {
+    return (
+      <ThemedView
+        type="backgroundElement"
+        style={styles.cardCompact}
+        accessible
+        accessibilityLabel={a11yLabel}
+      >
+        <View style={styles.body}>
+          <IdentityHeader candidate={candidate} />
+          <MetaRow candidate={candidate} />
+          <SkillChips
+            skills={candidate.skills}
+            highlightSkills={highlightSkills}
+          />
+        </View>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView
@@ -250,6 +281,10 @@ function EducationSection({ entries }: { entries: Candidate['education'] }) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
+    borderRadius: Spacing.three,
+    overflow: 'hidden',
+  },
+  cardCompact: {
     borderRadius: Spacing.three,
     overflow: 'hidden',
   },

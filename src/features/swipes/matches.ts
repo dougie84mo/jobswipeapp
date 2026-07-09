@@ -25,6 +25,7 @@ export interface MatchRow {
   user_id: string;
   candidate: {
     id: string;
+    external_id: string;
     full_name: string | null;
     headline: string | null;
     location: string | null;
@@ -37,6 +38,7 @@ export interface MatchRow {
   } | null;
   requisition: {
     id: string;
+    external_id: string;
     title: string | null;
   } | null;
 }
@@ -50,9 +52,9 @@ export function useMatches(scope: MatchScope, userId: string | undefined) {
         .from('swipes')
         .select(
           'id, direction, created_at, user_id, ' +
-            'candidate:candidates(id, full_name, headline, location, photo_url, ' +
+            'candidate:candidates(id, external_id, full_name, headline, location, photo_url, ' +
             'integration:integrations(id, provider, display_label)), ' +
-            'requisition:requisitions(id, title)',
+            'requisition:requisitions(id, external_id, title)',
         )
         .in('direction', ['right', 'up'])
         .order('created_at', { ascending: false });

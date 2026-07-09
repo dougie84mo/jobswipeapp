@@ -10,6 +10,8 @@ import { Spacing } from '@/constants/theme';
 import { initials } from '@/ats/candidate-utils';
 import { displayNameFor } from '@/ats/client';
 import { useSession } from '@/features/auth/SessionProvider';
+import { useVisibleGrades, visibleGradeKey } from '@/features/grades/queries';
+import { sortByGrade } from '@/features/grades/sort';
 import { useMyTeams, useProfileNames } from '@/features/teams/queries';
 import {
   type MatchRow,
@@ -20,6 +22,23 @@ import {
 // Matched candidates — positive swipes (Save / Boost) across every connected
 // source. The Team scope adds teammates' saves (RLS returns them once you
 // share a team); "Saved by {name}" marks the ones that aren't yours.
+// Sorting by grade (the swiper's grade for that candidate) turns the
+// shortlist into the ranked list a recruiter takes to a client.
+
+function gradeForRow(
+  row: MatchRow,
+  gradeByKey: Map<string, number | null>,
+): number | null {
+  const integrationId = row.candidate?.integration?.id;
+  const reqExternalId = row.requisition?.external_id;
+  const candExternalId = row.candidate?.external_id;
+  if (!integrationId || !reqExternalId || !candExternalId) return null;
+  return (
+    gradeByKey.get(
+      visibleGradeKey(integrationId, reqExternalId, candExternalId, row.user_id),
+    ) ?? null
+  );
+}
 
 const DIRECTION_LABEL: Record<MatchRow['direction'], string> = {
   right: 'Saved',
@@ -38,10 +57,17 @@ export default function CandidatesScreen() {
       ? session.session.user.id
       : undefined;
   const [scope, setScope] = useState<MatchScope>('mine');
+  const [sort, setSort] = useState<'recent' | 'grade'>('recent');
   const teamsQuery = useMyTeams();
   const hasTeam = (teamsQuery.data ?? []).length > 0;
   const matchesQuery = useMatches(scope, userId);
-  const rows = matchesQuery.data ?? [];
+  const { gradeByKey } = useVisibleGrades();
+  const rows = useMemo(() => {
+    const base = matchesQuery.data ?? [];
+    return sort === 'grade'
+      ? sortByGrade(base, (r) => gradeForRow(r, gradeByKey))
+      : base;
+  }, [matchesQuery.data, sort, gradeByKey]);
 
   const teammateIds = useMemo(
     () =>
@@ -60,20 +86,33 @@ export default function CandidatesScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {hasTeam ? (
-            <View style={styles.scopeRow}>
-              <ScopeButton
-                label="Mine"
-                active={scope === 'mine'}
-                onPress={() => setScope('mine')}
-              />
-              <ScopeButton
-                label="Team"
-                active={scope === 'team'}
-                onPress={() => setScope('team')}
-              />
-            </View>
-          ) : null}
+          <View style={styles.scopeRow}>
+            {hasTeam ? (
+              <>
+                <ScopeButton
+                  label="Mine"
+                  active={scope === 'mine'}
+                  onPress={() => setScope('mine')}
+                />
+                <ScopeButton
+                  label="Team"
+                  active={scope === 'team'}
+                  onPress={() => setScope('team')}
+                />
+                <View style={styles.scopeSpacer} />
+              </>
+            ) : null}
+            <ScopeButton
+              label="Recent"
+              active={sort === 'recent'}
+              onPress={() => setSort('recent')}
+            />
+            <ScopeButton
+              label="Grade"
+              active={sort === 'grade'}
+              onPress={() => setSort('grade')}
+            />
+          </View>
 
           {matchesQuery.isLoading ? (
             <ThemedText themeColor="textSecondary">Loading…</ThemedText>
@@ -96,6 +135,7 @@ export default function CandidatesScreen() {
               <MatchCard
                 key={row.id}
                 row={row}
+                grade={gradeForRow(row, gradeByKey)}
                 savedBy={
                   row.user_id !== userId
                     ? names.data?.[row.user_id] ?? 'a teammate'
@@ -137,7 +177,15 @@ function ScopeButton({
   );
 }
 
-function MatchCard({ row, savedBy }: { row: MatchRow; savedBy?: string }) {
+function MatchCard({
+  row,
+  grade,
+  savedBy,
+}: {
+  row: MatchRow;
+  grade: number | null;
+  savedBy?: string;
+}) {
   const integration = row.candidate?.integration ?? null;
   const sourceLabel = integration
     ? (integration.display_label ?? displayNameFor(integration.provider))
@@ -165,15 +213,24 @@ function MatchCard({ row, savedBy }: { row: MatchRow; savedBy?: string }) {
               <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
                 {row.candidate?.full_name ?? 'Unnamed candidate'}
               </ThemedText>
-              <View
-                style={[
-                  styles.directionPill,
-                  { backgroundColor: DIRECTION_COLOR[row.direction] },
-                ]}
-              >
-                <ThemedText type="small" style={styles.directionText}>
-                  {DIRECTION_LABEL[row.direction]}
-                </ThemedText>
+              <View style={styles.pillRow}>
+                {grade != null ? (
+                  <View style={styles.gradePill}>
+                    <ThemedText type="small" style={styles.gradePillText}>
+                      {grade}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                <View
+                  style={[
+                    styles.directionPill,
+                    { backgroundColor: DIRECTION_COLOR[row.direction] },
+                  ]}
+                >
+                  <ThemedText type="small" style={styles.directionText}>
+                    {DIRECTION_LABEL[row.direction]}
+                  </ThemedText>
+                </View>
               </View>
             </View>
             {row.candidate?.headline ? (
@@ -261,6 +318,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   directionText: { color: 'white', fontWeight: '700' },
+  pillRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  gradePill: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: 999,
+    backgroundColor: 'rgba(32,138,239,0.18)',
+    borderWidth: 1,
+    borderColor: '#208AEF',
+  },
+  gradePillText: { color: '#208AEF', fontWeight: '700' },
+  scopeSpacer: { flex: 1 },
   savedBy: { color: '#208AEF', fontWeight: '600' },
   pressed: { opacity: 0.7 },
 });

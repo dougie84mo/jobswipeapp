@@ -11,6 +11,51 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-09 — Manual grading (Grade mode)
+
+### Added
+- **Candidate grades** (migration `0022`): `candidate_grades` — one row per
+  (user, integration, requisition external id, candidate external id) with a
+  1–100 `grade`, per-skill / per-category scores in `detail_grades` jsonb,
+  and a `note`. Record-only: no ATS writes. RLS: self `for all` + teammate
+  SELECT on shared integrations (grades exist for client coordination).
+  `set_candidate_grade` RPC — SECURITY DEFINER, gated on
+  `can_use_integration`, full-replace upsert (the client merges partial
+  edits via `mergeGrade`; jsonb merge can't delete keys), all-empty input
+  deletes the row.
+- **Deck modes**: the requisition screen now has a mode dropdown
+  (`DECK_MODES` registry + `DeckModeSelector`) — **Swipe** (unchanged) and
+  **Grade**. Last-used mode persists at `app_prefs.deck_mode`.
+- **Grade mode** (`src/features/grades/GradeList.tsx`): scrollable list of
+  compact candidate cards (new `variant="compact"` on `CandidateCard` —
+  plain View body so it nests in a FlatList) with an inline 1–100
+  `GradeControl` per row (tap-to-edit pill → `[−] input [+]`, steppers
+  commit immediately, optimistic mutation), a "Swiped" badge, infinite
+  scroll, and a Deck order / Highest grade sort toggle. Shows **all**
+  candidates including already-swiped (`useDeckCandidates` gained
+  `{ includeSwiped }`, folded into the query key) while still honoring the
+  funnel filters.
+- **Grading detail screen** (`(app)/candidate-grade`, pushed from a Grade
+  row): overall grade, a score per skill, fixed Experience/Education
+  category scores, and a note — every control auto-saves on commit; "Clear
+  grade" deletes the row. Candidate is sourced from the deck query cache
+  (`useCachedDeckCandidate`) — no extra proxy round-trip.
+- **Candidates tab**: grade chip on match cards (the swiper's grade — works
+  in both Mine and Team scopes via `useVisibleGrades`) and a Recent / Grade
+  sort toggle (graded first, desc, ungraded keep recency).
+
+### Tests
+- Jest: `grade-utils` (clamp/merge/prune/empty matrix), `sort`
+  (desc, ungraded-last, stability), `GradeControl` interaction contract —
+  86 total.
+- RLS: `isolation.test.ts` covers `candidate_grades` + the RPC as an
+  outsider; `team-sharing.test.ts` covers teammate grade visibility, own-row
+  writes, forged-row rejection, and revocation on leave. Both green locally
+  on 0001–0022.
+
+### Pending deploy (user or next session)
+- Hosted `npx supabase db push` now covers **0016–0022**.
+
 ## 2026-07-07 — Stripe subscriptions (phase 7)
 
 ### Added

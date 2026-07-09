@@ -259,6 +259,49 @@ Deno.test("RLS: team sharing grants teammate access and revokes on leave", async
       "activity carries the swiper id",
     );
 
+    // --- Grades: shared visibility, author-only writes ----------------------
+    const gradeA = await A.rpc("set_candidate_grade", {
+      p_integration_id: sharedIntegration,
+      p_requisition_external_id: "req-1",
+      p_candidate_external_id: "cand-1",
+      p_grade: 85,
+      p_detail_grades: { skills: { React: 90 } },
+      p_note: "strong",
+    });
+    assertEquals(gradeA.error, null, "owner set_candidate_grade must succeed");
+    const gradesSeenByB = await B.from("candidate_grades").select(
+      "user_id, grade",
+    );
+    assert(
+      (gradesSeenByB.data ?? []).some((r: any) =>
+        r.user_id === userA && r.grade === 85
+      ),
+      "B sees A's grade on the shared integration",
+    );
+    const gradeB = await B.rpc("set_candidate_grade", {
+      p_integration_id: sharedIntegration,
+      p_requisition_external_id: "req-1",
+      p_candidate_external_id: "cand-1",
+      p_grade: 60,
+      p_detail_grades: {},
+      p_note: null,
+    });
+    assertEquals(gradeB.error, null, "teammate grades their own row");
+    const gradeUpd = await B.from("candidate_grades")
+      .update({ grade: 1 })
+      .eq("user_id", userA)
+      .select("id");
+    assertEquals(gradeUpd.data?.length, 0, "B must not update A's grade");
+    const gradeC = await C.rpc("set_candidate_grade", {
+      p_integration_id: sharedIntegration,
+      p_requisition_external_id: "req-1",
+      p_candidate_external_id: "cand-1",
+      p_grade: 50,
+      p_detail_grades: {},
+      p_note: null,
+    });
+    assert(gradeC.error !== null, "outsider must not grade");
+
     // --- B cannot write A's rows -------------------------------------------
     const upd = await B.from("integrations")
       .update({ display_label: "hacked" })
@@ -328,6 +371,23 @@ Deno.test("RLS: team sharing grants teammate access and revokes on leave", async
       p_integration_id: sharedIntegration,
     });
     assert(credAfter.error !== null, "decryption revoked after leaving");
+    const gradesAfter = await B.from("candidate_grades").select("user_id");
+    assert(
+      (gradesAfter.data ?? []).every((r: any) => r.user_id === userB),
+      "B keeps only their own grades after leaving",
+    );
+    const gradeAfterLeave = await B.rpc("set_candidate_grade", {
+      p_integration_id: sharedIntegration,
+      p_requisition_external_id: "req-1",
+      p_candidate_external_id: "cand-1",
+      p_grade: 70,
+      p_detail_grades: {},
+      p_note: null,
+    });
+    assert(
+      gradeAfterLeave.error !== null,
+      "grading revoked after leaving",
+    );
 
     // --- Owner cannot abandon the team ---------------------------------------
     const ownerLeave = await A.rpc("leave_team", { p_team_id: teamId });

@@ -2,11 +2,13 @@
 // recruiter's prior swipes for this requisition) and the recordSwipe mutation
 // that persists each swipe to Postgres.
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
+  type InfiniteData,
 } from '@tanstack/react-query';
 
 import { listCandidates } from '@/ats/client';
@@ -60,9 +62,18 @@ export interface DeckResult {
 
 // A deck page plus how many candidates the preference filters removed from
 // it (the already-swiped filter doesn't count — those aren't "hidden", they
-// are done).
-interface DeckPage extends Page<Candidate> {
+// are done). Exported so the grading detail screen can scan cached pages.
+export interface DeckPage extends Page<Candidate> {
   filteredOut: number;
+}
+
+export interface DeckOptions {
+  /**
+   * Keep already-swiped candidates in the deck (Grade mode shows everyone;
+   * the swipe deck hides them). Part of the query key, so each mode caches
+   * its own pages.
+   */
+  includeSwiped?: boolean;
 }
 
 // Candidates for the swipe deck, paged on demand. Each page is fetched with an
@@ -77,7 +88,9 @@ export function useDeckCandidates(
   integration: IntegrationRow | null | undefined,
   requisitionExternalId: string | undefined,
   filters: CandidateFilters = {},
+  options: DeckOptions = {},
 ): DeckResult {
+  const includeSwiped = options.includeSwiped ?? false;
   const enabled = Boolean(integration && requisitionExternalId);
   const query = useInfiniteQuery({
     // filtersKey in the query key: editing filters mounts a fresh deck (the
@@ -87,6 +100,7 @@ export function useDeckCandidates(
       integration?.id ?? null,
       requisitionExternalId ?? null,
       filtersKey(filters),
+      includeSwiped ? 'all' : 'unswiped',
     ],
     enabled,
     initialPageParam: '',
@@ -100,7 +114,9 @@ export function useDeckCandidates(
           requisitionExternalId,
           pageParam,
         ),
-        fetchSwipedExternalIds(integration.id, requisitionExternalId),
+        includeSwiped
+          ? Promise.resolve(new Set<string>())
+          : fetchSwipedExternalIds(integration.id, requisitionExternalId),
       ]);
       const unswiped = page.items.filter((c) => !swiped.has(c.externalId));
       const items = unswiped.filter((c) => candidatePassesFilters(c, filters));
@@ -132,6 +148,58 @@ export function useDeckCandidates(
     filteredOutCount: pages.reduce((acc, p) => acc + p.filteredOut, 0),
   };
 }
+
+/**
+ * Find one candidate in the already-loaded deck pages (any filter / mode
+ * variant of this requisition's deck). The grading detail screen is only
+ * ever pushed from a loaded list, so a hit is effectively guaranteed; a
+ * cold deep-link misses and the screen shows a go-back fallback. Reading
+ * the cache avoids adding a getCandidate proxy round-trip.
+ */
+export function useCachedDeckCandidate(
+  integrationId: string | undefined,
+  requisitionExternalId: string | undefined,
+  candidateExternalId: string | undefined,
+): Candidate | undefined {
+  const qc = useQueryClient();
+  return useMemo(() => {
+    if (!integrationId || !requisitionExternalId || !candidateExternalId) {
+      return undefined;
+    }
+    const entries = qc.getQueriesData<InfiniteData<DeckPage>>({
+      queryKey: ['deck', integrationId, requisitionExternalId],
+    });
+    for (const [, data] of entries) {
+      for (const page of data?.pages ?? []) {
+        const hit = page.items.find(
+          (c) => c.externalId === candidateExternalId,
+        );
+        if (hit) return hit;
+      }
+    }
+    return undefined;
+  }, [qc, integrationId, requisitionExternalId, candidateExternalId]);
+}
+
+/**
+ * The set of candidate external ids the caller has already swiped on this
+ * requisition. Lives under swipedKey, which useRecordSwipe already
+ * invalidates — Grade mode uses it for "Swiped" badges.
+ */
+export function useSwipedIds(
+  integrationId: string | undefined,
+  requisitionExternalId: string | undefined,
+): Set<string> {
+  const query = useQuery({
+    queryKey: swipedKey(integrationId ?? '', requisitionExternalId ?? ''),
+    enabled: Boolean(integrationId && requisitionExternalId),
+    queryFn: () =>
+      fetchSwipedExternalIds(integrationId ?? '', requisitionExternalId ?? ''),
+  });
+  return query.data ?? EMPTY_ID_SET;
+}
+
+const EMPTY_ID_SET: Set<string> = new Set();
 
 export interface RecordSwipeInput {
   integration: IntegrationRow;

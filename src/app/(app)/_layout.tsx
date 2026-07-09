@@ -49,6 +49,7 @@ export default function AppLayout() {
         <Stack.Screen name="settings/subscriptions" options={{ title: 'Subscriptions' }} />
         <Stack.Screen name="settings/team" options={{ title: 'Recruit Team' }} />
         <Stack.Screen name="candidate/[swipeId]" options={{ title: 'Candidate' }} />
+        <Stack.Screen name="candidate-grade" options={{ title: 'Grade candidate' }} />
         <Stack.Screen name="requisition-filters" options={{ title: 'Filters' }} />
         <Stack.Screen name="integration/[id]/index" options={{ title: 'Integration' }} />
         <Stack.Screen name="integration/[id]/settings" options={{ title: 'Swipe actions' }} />

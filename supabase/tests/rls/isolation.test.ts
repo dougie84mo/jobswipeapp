@@ -172,6 +172,18 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
       });
     if (filtErr) throw new Error(`seed requisition_filters: ${filtErr.message}`);
 
+    const { error: gradeErr } = await service
+      .from("candidate_grades")
+      .insert({
+        user_id: userA,
+        integration_id: integrationId,
+        requisition_external_id: "req-1",
+        candidate_external_id: "cand-1",
+        grade: 88,
+        detail_grades: { skills: { React: 90 } },
+      });
+    if (gradeErr) throw new Error(`seed candidate_grades: ${gradeErr.message}`);
+
     // --- Sanity: A sees its own data --------------------------------------
     assertEquals((await A.from("integrations").select("id")).data?.length, 1);
     assertEquals((await A.from("requisitions").select("id")).data?.length, 1);
@@ -189,6 +201,10 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
       (await A.from("requisition_filters").select("id")).data?.length,
       1,
     );
+    assertEquals(
+      (await A.from("candidate_grades").select("id")).data?.length,
+      1,
+    );
 
     // --- B is fully walled off (SELECT returns nothing) -------------------
     for (
@@ -200,6 +216,7 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
         "integration_settings",
         "notification_topics",
         "requisition_filters",
+        "candidate_grades",
       ]
     ) {
       const { data, error } = await B.from(table).select("id");
@@ -259,6 +276,20 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
     assert(
       rf.error !== null,
       "B must not set requisition filters under A integration",
+    );
+
+    // The grade RPC verifies integration access before writing.
+    const gr = await B.rpc("set_candidate_grade", {
+      p_integration_id: integrationId,
+      p_requisition_external_id: "req-1",
+      p_candidate_external_id: "cand-1",
+      p_grade: 10,
+      p_detail_grades: {},
+      p_note: null,
+    });
+    assert(
+      gr.error !== null,
+      "B must not grade candidates under A integration",
     );
   } finally {
     // Cascade-deletes each user's rows across all tables.

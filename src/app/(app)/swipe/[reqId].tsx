@@ -23,8 +23,11 @@ import {
   actionsForDirection,
   useIntegrationSettings,
 } from '@/features/integrations/settings';
-import { useRecruiterProfile } from '@/features/profile/queries';
+import { GradeList } from '@/features/grades/GradeList';
+import { useRecruiterProfile, useUpdateRecruiterProfile } from '@/features/profile/queries';
 import { CandidateCard } from '@/features/swipes/CandidateCard';
+import { DeckModeSelector } from '@/features/swipes/DeckModeSelector';
+import { isDeckMode, type DeckMode } from '@/features/swipes/deck-modes';
 import { executeActions } from '@/features/swipes/execute-actions';
 import { useDeckCandidates, useRecordSwipe } from '@/features/swipes/queries';
 import { SwipeableCard } from '@/features/swipes/SwipeableCard';
@@ -56,7 +59,6 @@ export default function SwipeDeckScreen() {
     [globalFilters, reqFiltersQuery.data],
   );
   const activeFilters = activeFilterCount(filters);
-  const candidatesQuery = useDeckCandidates(integration, reqId, filters);
   const settingsQuery = useIntegrationSettings(integration?.id);
   const recordSwipe = useRecordSwipe();
   const session = useSession();
@@ -66,7 +68,32 @@ export default function SwipeDeckScreen() {
       : undefined;
   const profileQuery = useRecruiterProfile(userId);
   const gestureSwiping = profileQuery.data?.app_prefs?.gesture_swiping ?? false;
+  const updateProfile = useUpdateRecruiterProfile();
   const theme = useTheme();
+
+  // Working mode: local choice wins, else last-used from app_prefs, else
+  // swipe. Changing it writes behind to the profile (never blocks the UI).
+  const [modeChoice, setModeChoice] = useState<DeckMode | null>(null);
+  const savedMode = profileQuery.data?.app_prefs?.deck_mode;
+  const mode: DeckMode =
+    modeChoice ?? (isDeckMode(savedMode) ? savedMode : 'swipe');
+  function changeMode(next: DeckMode) {
+    setModeChoice(next);
+    if (userId && profileQuery.data) {
+      updateProfile.mutate({
+        userId,
+        app_prefs: { ...profileQuery.data.app_prefs, deck_mode: next },
+      });
+    }
+  }
+
+  // The swipe deck's query only runs in Swipe mode — Grade mode has its own
+  // (includeSwiped) variant inside GradeList.
+  const candidatesQuery = useDeckCandidates(
+    mode === 'swipe' ? integration : null,
+    reqId,
+    filters,
+  );
 
   const [topIndex, setTopIndex] = useState(0);
   const [lastOutcome, setLastOutcome] = useState<ExecutedAction[] | null>(null);
@@ -222,7 +249,17 @@ export default function SwipeDeckScreen() {
           <ThemedText themeColor="textSecondary">
             Requisition no longer available.
           </ThemedText>
-        ) : !current ? (
+        ) : (
+          <>
+            <DeckModeSelector mode={mode} onChange={changeMode} />
+            {mode === 'grade' ? (
+              <GradeList
+                integration={integration}
+                requisition={requisition}
+                filters={filters}
+                onOpenFilters={openFilters}
+              />
+            ) : !current ? (
           pagingStopped ? (
             <ThemedView type="backgroundElement" style={styles.doneCard}>
               <ThemedText type="subtitle">Filters are hiding candidates</ThemedText>
@@ -320,6 +357,8 @@ export default function SwipeDeckScreen() {
             >
               Candidate {topIndex + 1} of {candidates.length}
             </ThemedText>
+          </>
+            )}
           </>
         )}
       </SafeAreaView>
