@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { PLAN_LABEL } from '@/features/billing/entitlements';
 import { useEntitlements } from '@/features/billing/queries';
 import {
   useCreateIntegration,
@@ -283,9 +284,10 @@ export default function ConnectScreen() {
     // The create_integration RPC enforces this server-side too; gating here
     // routes the recruiter to the upgrade instead of a failed connect.
     if (!entitlements.canAddConnection) {
+      const limit = entitlements.connectionLimit ?? 0;
       Alert.alert(
-        'Free plan limit',
-        'The free plan includes one connected source. Upgrade to Pro for unlimited connections.',
+        `${PLAN_LABEL[entitlements.plan]} plan limit`,
+        `Your ${PLAN_LABEL[entitlements.plan]} plan includes ${limit} connected source${limit === 1 ? '' : 's'}. Upgrade for more.`,
         [
           { text: 'Not now', style: 'cancel' },
           {

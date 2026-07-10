@@ -11,6 +11,51 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-09 — Four-tier pricing
+
+### Changed
+- **Plans go from two tiers to four** (migration `0023`). The free tier is now
+  named **Freelancer** and, as before, is the *absence* of an entitled
+  subscription row — it never appears in the `subscriptions` table.
+
+  | Plan | Price | Connected sources | Seats | Teams |
+  |---|---|---|---|---|
+  | Freelancer | $0 | 1 | 1 | no |
+  | Basic | $5/mo | 2 | 1 | no |
+  | Pro | $20/mo + $15/extra seat | 5 | 1 included | yes |
+  | Team Pro | $100/mo | unlimited | 10 | yes |
+
+- **`subscriptions.plan`** check widened from `('pro','team')` to
+  `('basic','pro','team_pro')`. Applied as a plain constraint swap — the table
+  had zero rows, so no `team` → `team_pro` data migration was needed.
+- **Connection caps are per-plan**, not free-vs-paid. New
+  `connection_limit_for(user)` SECURITY DEFINER function (NULL = unlimited) is
+  the single source of the ceiling; `create_integration` v5 gates on it.
+- **Teams now require Pro or Team Pro** (`create_team` v3) — both plans carry
+  seats. `invite_to_team` v3 draws seats from either.
+- **Pro bills as two Stripe line items**: the base price includes seat 1, and
+  an extra-seat price carries `quantity = seats - 1` (omitted at 1 seat), so
+  the invoice reads `$20 + N × $15` rather than `N × $20`. Because a
+  subscription can now hold more than one item, `stripe-webhook` resolves plan
+  and seats by scanning *all* items (`resolvePlan`) instead of reading
+  `items.data[0].quantity`. Team Pro's 10 seats are a plan constant, not a
+  quantity.
+- **Billing secrets renamed/added**: `STRIPE_PRICE_BASIC`, `STRIPE_PRICE_PRO`,
+  `STRIPE_PRICE_PRO_SEAT`, `STRIPE_PRICE_TEAM_PRO` (was `STRIPE_PRICE_PRO` +
+  `STRIPE_PRICE_TEAM`).
+- **Entitlements** (`src/features/billing/entitlements.ts`): `PlanId` is now
+  `freelancer | basic | pro | team_pro`; `FREE_CONNECTION_LIMIT` → the
+  `PLAN_CONNECTION_LIMIT` map; `teamSeats` → `seats`; added `connectionLimit`
+  to `Entitlements`, plus `PLAN_ORDER` / `isUpgrade` so the Subscriptions
+  screen renders only the plans above the current one. Connect-screen limit
+  copy is now derived from the plan rather than hardcoded to "free".
+
+### Stripe (test mode)
+- Products/prices created via the Stripe API on account `acct_1TrTB1QhQ9qpXxVz`.
+  Lookup keys: `recruit_swipe_basic_monthly`, `recruit_swipe_pro_monthly`,
+  `recruit_swipe_pro_seat_monthly`, `recruit_swipe_team_pro_monthly`.
+  The interim $19 Pro and $15/seat Team prices were archived.
+
 ## 2026-07-09 — Manual grading (Grade mode)
 
 ### Added

@@ -15,8 +15,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useSession } from '@/features/auth/SessionProvider';
 import {
-  FREE_CONNECTION_LIMIT,
+  isUpgrade,
+  PLAN_CONNECTION_LIMIT,
   PLAN_LABEL,
+  PLAN_PRICE_LABEL,
+  TEAM_CAPABLE_PLANS,
+  type PaidPlanId,
 } from '@/features/billing/entitlements';
 import {
   SUBSCRIPTIONS_KEY,
@@ -27,7 +31,15 @@ import {
 } from '@/features/billing/queries';
 import { useTheme } from '@/hooks/use-theme';
 
-const TEAM_SEAT_CHOICES = [2, 5, 10] as const;
+const PRO_SEAT_CHOICES = [1, 2, 5, 10] as const;
+
+const FREELANCER_LIMIT = PLAN_CONNECTION_LIMIT.freelancer;
+
+const UPGRADE_COPY: Record<PaidPlanId, string> = {
+  basic: 'Two connected sources, unlimited swipes. For a solo recruiter working a couple of pipelines.',
+  pro: 'Five connected sources, plus teams: share connections, shortlists, and activity. Includes one seat; add more for $15 each.',
+  team_pro: 'Every source, no cap, and ten seats included. For a full recruiting desk.',
+};
 
 export default function SubscriptionsScreen() {
   const theme = useTheme();
@@ -44,12 +56,17 @@ export default function SubscriptionsScreen() {
 
   const ownSubs = (subsQuery.data ?? []).filter((s) => s.user_id === userId);
   const activeSub = ownSubs.find((s) => s.plan === entitlements.plan);
+  // RLS only returns other users' rows when they own a team you're on.
   const teamOwnerSub = (subsQuery.data ?? []).find(
-    (s) => s.user_id !== userId && s.plan === 'team',
+    (s) => s.user_id !== userId && TEAM_CAPABLE_PLANS.includes(s.plan),
   );
   const busy = checkout.isPending || portal.isPending;
 
-  async function startCheckout(plan: 'pro' | 'team', seats?: number) {
+  const upgrades = (['basic', 'pro', 'team_pro'] as const).filter((p) =>
+    isUpgrade(p, entitlements.plan),
+  );
+
+  async function startCheckout(plan: PaidPlanId, seats?: number) {
     try {
       await checkout.start(plan, seats);
     } catch (err) {
@@ -57,15 +74,35 @@ export default function SubscriptionsScreen() {
     }
   }
 
-  function pickTeamSeats() {
-    Alert.alert('Team size', 'How many seats do you need? (You can change this later in Manage billing.)', [
-      { text: 'Cancel', style: 'cancel' },
-      ...TEAM_SEAT_CHOICES.map((n) => ({
-        text: `${n} seats`,
-        onPress: () => void startCheckout('team', n),
-      })),
-    ]);
+  function pickProSeats() {
+    Alert.alert(
+      'How many seats?',
+      'Pro includes one seat at $20/month. Extra seats are $15 each. You can change this later in Manage billing.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        ...PRO_SEAT_CHOICES.map((n) => ({
+          text: n === 1 ? '1 seat — $20/mo' : `${n} seats — $${20 + (n - 1) * 15}/mo`,
+          onPress: () => void startCheckout('pro', n),
+        })),
+      ],
+    );
   }
+
+  function planSummary(): string {
+    if (isLoading) return 'Loading…';
+    if (entitlements.plan === 'freelancer') {
+      return `${FREELANCER_LIMIT} connected source, unlimited swipes`;
+    }
+    if (activeSub?.status === 'past_due') {
+      return 'Payment past due — update your card in Manage billing';
+    }
+    if (activeSub?.current_period_end) {
+      return `Renews ${new Date(activeSub.current_period_end).toLocaleDateString()}`;
+    }
+    return 'Active';
+  }
+
+  const limit = entitlements.connectionLimit;
 
   return (
     <ThemedView style={styles.container}>
@@ -78,31 +115,32 @@ export default function SubscriptionsScreen() {
           <SettingsGroup title="Current plan">
             <View style={styles.planRow}>
               <Ionicons
-                name={entitlements.plan === 'free' ? 'leaf-outline' : 'rocket-outline'}
+                name={
+                  entitlements.plan === 'freelancer'
+                    ? 'leaf-outline'
+                    : 'rocket-outline'
+                }
                 size={20}
                 color={theme.textSecondary}
               />
               <View style={styles.planBody}>
                 <ThemedText type="smallBold">
                   {PLAN_LABEL[entitlements.plan]}
-                  {entitlements.plan === 'team'
-                    ? ` — ${entitlements.teamSeats} seat${entitlements.teamSeats === 1 ? '' : 's'}`
+                  {TEAM_CAPABLE_PLANS.includes(entitlements.plan)
+                    ? ` — ${entitlements.seats} seat${entitlements.seats === 1 ? '' : 's'}`
                     : ''}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {isLoading
-                    ? 'Loading…'
-                    : entitlements.plan === 'free'
-                      ? `${FREE_CONNECTION_LIMIT} connected source, no teams`
-                      : activeSub?.status === 'past_due'
-                        ? 'Payment past due — update your card in Manage billing'
-                        : activeSub?.current_period_end
-                          ? `Renews ${new Date(activeSub.current_period_end).toLocaleDateString()}`
-                          : 'Active'}
+                  {planSummary()}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {limit === null
+                    ? 'Unlimited connected sources'
+                    : `${limit} connected source${limit === 1 ? '' : 's'}`}
                 </ThemedText>
                 {teamOwnerSub ? (
                   <ThemedText type="small" themeColor="textSecondary">
-                    You’re also on a teammate’s Team plan.
+                    You’re also on a teammate’s {PLAN_LABEL[teamOwnerSub.plan]} plan.
                   </ThemedText>
                 ) : null}
               </View>
@@ -117,27 +155,22 @@ export default function SubscriptionsScreen() {
             </View>
           </SettingsGroup>
 
-          {entitlements.plan !== 'team' ? (
+          {upgrades.length > 0 ? (
             <SettingsGroup title="Upgrade">
-              {entitlements.plan === 'free' ? (
-                <>
+              {upgrades.map((plan, index) => (
+                <View key={plan}>
+                  {index > 0 ? <RowDivider /> : null}
                   <PlanOption
-                    title="Pro"
-                    description="Unlimited connected sources for a single recruiter."
-                    cta="Upgrade to Pro"
+                    title={`${PLAN_LABEL[plan]} — ${PLAN_PRICE_LABEL[plan]}`}
+                    description={UPGRADE_COPY[plan]}
+                    cta={`Upgrade to ${PLAN_LABEL[plan]}`}
                     disabled={busy}
-                    onPress={() => void startCheckout('pro')}
+                    onPress={() =>
+                      plan === 'pro' ? pickProSeats() : void startCheckout(plan)
+                    }
                   />
-                  <RowDivider />
-                </>
-              ) : null}
-              <PlanOption
-                title="Team"
-                description="Everything in Pro, plus teams: share connections, shortlists, and activity with teammates or a freelance partner."
-                cta="Upgrade to Team"
-                disabled={busy}
-                onPress={pickTeamSeats}
-              />
+                </View>
+              ))}
             </SettingsGroup>
           ) : null}
 
@@ -163,7 +196,7 @@ export default function SubscriptionsScreen() {
 
           <ThemedText type="small" themeColor="textSecondary">
             Payments are processed by Stripe on a secure page outside the app.
-            The free plan stays free: {FREE_CONNECTION_LIMIT} connected source,
+            The Freelancer plan stays free: {FREELANCER_LIMIT} connected source,
             unlimited swipes, configurable swipe actions.
           </ThemedText>
         </ScrollView>

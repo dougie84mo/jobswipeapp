@@ -10,7 +10,12 @@ import * as WebBrowser from 'expo-web-browser';
 import { useSession } from '@/features/auth/SessionProvider';
 import { useIntegrations } from '@/features/integrations/queries';
 import { getSupabase } from '@/lib/supabase';
-import { entitlementsFor, type Entitlements, type SubscriptionRow } from './entitlements';
+import {
+  entitlementsFor,
+  type Entitlements,
+  type PaidPlanId,
+  type SubscriptionRow,
+} from './entitlements';
 
 export const SUBSCRIPTIONS_KEY = ['subscriptions'] as const;
 
@@ -83,7 +88,7 @@ export function useOpenCheckout() {
   const open = useOpenBillingPage();
   return {
     ...open,
-    start: (plan: 'pro' | 'team', seats?: number) =>
+    start: (plan: PaidPlanId, seats?: number) =>
       open.mutateAsync({ action: 'checkout', plan, seats }),
   };
 }

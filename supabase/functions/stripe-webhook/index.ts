@@ -13,8 +13,13 @@
 //   customer.subscription.deleted     → status 'canceled'
 //
 // user_id comes from subscription.metadata (set by the billing function at
-// checkout). plan maps from the price id (STRIPE_PRICE_PRO / _TEAM) with
+// checkout). plan maps from the price ids on the subscription's items, with
 // metadata.plan as fallback.
+//
+// Seats: a `pro` subscription carries TWO items — the base price (seat 1) and
+// the extra-seat price (quantity = seats - 1) — so seats is computed, not read
+// off a single quantity. `team_pro` seats are a plan constant. See the billing
+// function's checkout branch.
 //
 // Register in the Stripe dashboard:
 //   https://<project-ref>.supabase.co/functions/v1/stripe-webhook
@@ -24,13 +29,48 @@ import Stripe from 'https://esm.sh/stripe@17.7.0?target=denonext';
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
-function planFromPrice(
-  priceId: string | undefined,
-  metadataPlan: string | undefined,
-): 'pro' | 'team' | null {
-  if (priceId && priceId === Deno.env.get('STRIPE_PRICE_PRO')) return 'pro';
-  if (priceId && priceId === Deno.env.get('STRIPE_PRICE_TEAM')) return 'team';
-  if (metadataPlan === 'pro' || metadataPlan === 'team') return metadataPlan;
+type PaidPlan = 'basic' | 'pro' | 'team_pro';
+
+/** Mirrors PLAN_INCLUDED_SEATS.team_pro in src/features/billing/entitlements.ts. */
+const TEAM_PRO_SEATS = 10;
+
+function isPaidPlan(value: string | undefined): value is PaidPlan {
+  return value === 'basic' || value === 'pro' || value === 'team_pro';
+}
+
+/**
+ * Resolve plan + seats from the subscription's line items. Price ids win over
+ * metadata; metadata.plan is the fallback when price ids get rotated.
+ */
+// deno-lint-ignore no-explicit-any
+function resolvePlan(sub: any): { plan: PaidPlan; seats: number } | null {
+  // deno-lint-ignore no-explicit-any
+  const items: any[] = sub.items?.data ?? [];
+  const qtyOf = (priceId: string | undefined): number => {
+    if (!priceId) return 0;
+    const item = items.find((i) => i?.price?.id === priceId);
+    return item ? (item.quantity ?? 0) : 0;
+  };
+
+  const basic = Deno.env.get('STRIPE_PRICE_BASIC');
+  const pro = Deno.env.get('STRIPE_PRICE_PRO');
+  const proSeat = Deno.env.get('STRIPE_PRICE_PRO_SEAT');
+  const teamPro = Deno.env.get('STRIPE_PRICE_TEAM_PRO');
+
+  if (qtyOf(teamPro) > 0) return { plan: 'team_pro', seats: TEAM_PRO_SEATS };
+  // Base price includes seat 1; the extra-seat item carries the rest.
+  if (qtyOf(pro) > 0) return { plan: 'pro', seats: 1 + qtyOf(proSeat) };
+  if (qtyOf(basic) > 0) return { plan: 'basic', seats: 1 };
+
+  const fallback = sub.metadata?.plan as string | undefined;
+  if (isPaidPlan(fallback)) {
+    return {
+      plan: fallback,
+      seats: fallback === 'team_pro'
+        ? TEAM_PRO_SEATS
+        : (items[0]?.quantity ?? 1),
+    };
+  }
   return null;
 }
 
@@ -40,8 +80,9 @@ async function upsertSubscription(sub: any): Promise<string | null> {
   if (!userId) return 'subscription has no metadata.user_id';
 
   const item = sub.items?.data?.[0];
-  const plan = planFromPrice(item?.price?.id, sub.metadata?.plan);
-  if (!plan) return `unmapped price ${item?.price?.id ?? 'unknown'}`;
+  const resolved = resolvePlan(sub);
+  if (!resolved) return `unmapped price ${item?.price?.id ?? 'unknown'}`;
+  const { plan, seats } = resolved;
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -57,7 +98,7 @@ async function upsertSubscription(sub: any): Promise<string | null> {
       stripe_subscription_id: sub.id,
       plan,
       status: sub.status,
-      seats: item?.quantity ?? 1,
+      seats,
       current_period_end: typeof periodEnd === 'number'
         ? new Date(periodEnd * 1000).toISOString()
         : null,

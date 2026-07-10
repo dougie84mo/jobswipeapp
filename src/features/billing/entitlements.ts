@@ -1,26 +1,71 @@
 // Plan entitlements — pure logic, exhaustively Jest-tested. The server
-// enforces the same rules in SECURITY DEFINER RPCs (0021: create_integration
-// requires pro/team past the first connection, create_team requires team,
-// invite_to_team enforces seats); this module drives the UI gates and copy.
+// enforces the same rules in SECURITY DEFINER RPCs (0023: create_integration
+// caps connections via connection_limit_for, create_team requires pro or
+// team_pro, invite_to_team enforces seats); this module drives the UI gates
+// and copy.
 
-export type PlanId = 'free' | 'pro' | 'team';
+/** Freelancer is the absence of an entitled subscription row, not a Stripe plan. */
+export type PlanId = 'freelancer' | 'basic' | 'pro' | 'team_pro';
+
+/** Plans that exist as Stripe subscriptions (i.e. everything but freelancer). */
+export type PaidPlanId = Exclude<PlanId, 'freelancer'>;
 
 /** Stripe statuses that count as entitled (past_due = payment-retry grace). */
 export const ENTITLED_STATUSES = ['active', 'trialing', 'past_due'] as const;
 
-/** Free-plan ceiling on connected sources. */
-export const FREE_CONNECTION_LIMIT = 1;
+/** Connected-source ceiling per plan. null = unlimited. */
+export const PLAN_CONNECTION_LIMIT: Record<PlanId, number | null> = {
+  freelancer: 1,
+  basic: 2,
+  pro: 5,
+  team_pro: null,
+};
+
+/** Seats included in the plan's base price. Extra pro seats are billed per-seat. */
+export const PLAN_INCLUDED_SEATS: Record<PlanId, number> = {
+  freelancer: 1,
+  basic: 1,
+  pro: 1,
+  team_pro: 10,
+};
+
+/** Plans that can create a team and invite into seats. */
+export const TEAM_CAPABLE_PLANS: readonly PlanId[] = ['pro', 'team_pro'];
+
+/** Cheapest-to-richest. Index doubles as the rank for upgrade comparisons. */
+export const PLAN_ORDER: readonly PlanId[] = [
+  'freelancer',
+  'basic',
+  'pro',
+  'team_pro',
+];
+
+/** True when `candidate` sits above `current` in PLAN_ORDER. */
+export function isUpgrade(candidate: PlanId, current: PlanId): boolean {
+  return PLAN_ORDER.indexOf(candidate) > PLAN_ORDER.indexOf(current);
+}
+
+/** Highest-to-lowest, so the entitled plan is the first match. */
+const PLAN_RANK: readonly PaidPlanId[] = ['team_pro', 'pro', 'basic'];
 
 export const PLAN_LABEL: Record<PlanId, string> = {
-  free: 'Free',
+  freelancer: 'Freelancer',
+  basic: 'Basic',
   pro: 'Pro',
-  team: 'Team',
+  team_pro: 'Team Pro',
+};
+
+export const PLAN_PRICE_LABEL: Record<PlanId, string> = {
+  freelancer: 'Free',
+  basic: '$5/mo',
+  pro: '$20/mo + $15/seat',
+  team_pro: '$100/mo',
 };
 
 export interface SubscriptionRow {
   id: string;
   user_id: string;
-  plan: 'pro' | 'team';
+  plan: PaidPlanId;
   status: string;
   seats: number;
   current_period_end: string | null;
@@ -28,12 +73,14 @@ export interface SubscriptionRow {
 }
 
 export interface Entitlements {
-  /** Highest entitled plan (team > pro > free). */
+  /** Highest entitled plan (team_pro > pro > basic > freelancer). */
   plan: PlanId;
   canAddConnection: boolean;
   canCreateTeam: boolean;
-  /** Seats on the entitled team plan (0 when none). */
-  teamSeats: number;
+  /** Connected-source ceiling for the entitled plan. null = unlimited. */
+  connectionLimit: number | null;
+  /** Seats on the entitled plan (freelancer/basic are single-seat). */
+  seats: number;
   /** True when the user has ever had a Stripe customer (portal available). */
   hasBillingAccount: boolean;
 }
@@ -52,15 +99,25 @@ export function entitlementsFor(
   counts: { integrations: number },
 ): Entitlements {
   const entitled = ownSubscriptions.filter(isEntitled);
-  const team = entitled.find((s) => s.plan === 'team');
-  const pro = entitled.find((s) => s.plan === 'pro');
-  const plan: PlanId = team ? 'team' : pro ? 'pro' : 'free';
+  const active = PLAN_RANK.map((p) => entitled.find((s) => s.plan === p)).find(
+    (s): s is SubscriptionRow => s !== undefined,
+  );
+  const plan: PlanId = active?.plan ?? 'freelancer';
+  const connectionLimit = PLAN_CONNECTION_LIMIT[plan];
+
+  // team_pro seats are fixed by the plan; pro seats are whatever quantity the
+  // extra-seat line item carries (the webhook already folded in the base seat).
+  const seats = plan === 'team_pro'
+    ? PLAN_INCLUDED_SEATS.team_pro
+    : (active?.seats ?? PLAN_INCLUDED_SEATS[plan]);
+
   return {
     plan,
     canAddConnection:
-      plan !== 'free' || counts.integrations < FREE_CONNECTION_LIMIT,
-    canCreateTeam: Boolean(team),
-    teamSeats: team?.seats ?? 0,
+      connectionLimit === null || counts.integrations < connectionLimit,
+    canCreateTeam: TEAM_CAPABLE_PLANS.includes(plan),
+    connectionLimit,
+    seats,
     hasBillingAccount: ownSubscriptions.length > 0,
   };
 }
