@@ -53,8 +53,22 @@ pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
   writes, forged-row rejection, and revocation on leave. Both green locally
   on 0001–0022.
 
-### Pending deploy (user or next session)
-- Hosted `npx supabase db push` now covers **0016–0022**.
+### Deployed (hosted project lbhikadtsmbnzkzetpyb)
+- `db push` applied **0013–0022** (hosted was further behind than assumed —
+  0012); `functions deploy ats-proxy billing billing-return stripe-webhook`;
+  `config push`. Webhook JWT exemption verified (500 signature path, not
+  401).
+
+### Fixed
+- **billing-return** now issues a **302 redirect** to
+  `recruitswipe://billing-return` instead of serving an HTML bounce page:
+  the Supabase gateway rewrites HTML from `*.supabase.co` functions to
+  `text/plain` with a sandbox CSP (anti-phishing), so the meta-refresh page
+  could never render. The in-app browser follows scheme redirects natively.
+
+### Still pending
+- Stripe provisioning: products/prices/webhook + the four
+  `supabase secrets set` values — needs a test-mode `sk_test_…` key.
 
 ## 2026-07-07 — Stripe subscriptions (phase 7)
 
