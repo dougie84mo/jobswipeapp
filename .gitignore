@@ -27,6 +27,12 @@ expo-env.d.ts
 *.mobileprovision
 *.pem
 
+# Push credentials — provided to EAS/Firebase, never committed
+google-services.json
+GoogleService-Info.plist
+# FCM v1 service-account key (name it fcm-service-account.json when downloaded)
+fcm-service-account*.json
+
 # Environment variables
 .env
 .env*.local
