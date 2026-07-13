@@ -390,6 +390,101 @@ export async function getUser(
   };
 }
 
+// ============================================================================
+// integration_health
+// ============================================================================
+
+export async function integrationHealth(
+  admin: SupabaseClient<DB>,
+): Promise<unknown> {
+  const [integrations, swipes, topics] = await Promise.all([
+    admin.from('integrations').select('provider'),
+    // Provider comes via swipes -> requisitions -> integrations embedding.
+    admin.from('swipes').select(
+      'created_at, executed_actions, requisitions(integrations(provider))',
+    ).gte('created_at', isoDaysAgo(7)),
+    admin.from('notification_topics').select(
+      'id, requisition_external_id, last_scanned_at, integrations(provider)',
+    ).eq('enabled', true),
+  ]);
+  firstError([integrations, swipes, topics]);
+
+  const connectionsByProvider = new Map<string, number>();
+  for (
+    const i of (integrations.data ?? []) as unknown as Array<
+      { provider: string }
+    >
+  ) {
+    connectionsByProvider.set(
+      i.provider,
+      (connectionsByProvider.get(i.provider) ?? 0) + 1,
+    );
+  }
+
+  // executed_actions entries (execute-actions.ts):
+  // { descriptor: { type, ... }, status: 'success'|'failure'|'skipped',
+  //   executedAt, message? }
+  interface ExecutedEntry {
+    descriptor?: { type?: string };
+    status?: string;
+    message?: string;
+  }
+  interface SwipeRow {
+    created_at: string;
+    executed_actions: unknown;
+    requisitions: { integrations: { provider: string } | null } | null;
+  }
+  const recentFailures: Array<{
+    provider: string;
+    actionType: string;
+    swipedAt: string;
+    detail: string | null;
+  }> = [];
+  for (const s of (swipes.data ?? []) as unknown as SwipeRow[]) {
+    const entries = Array.isArray(s.executed_actions)
+      ? s.executed_actions as ExecutedEntry[]
+      : [];
+    for (const e of entries) {
+      if (e.status !== 'failure') continue;
+      recentFailures.push({
+        provider: s.requisitions?.integrations?.provider ?? 'unknown',
+        actionType: e.descriptor?.type ?? 'unknown',
+        swipedAt: s.created_at,
+        detail: e.message ?? null,
+      });
+    }
+  }
+  recentFailures.sort((a, b) => b.swipedAt.localeCompare(a.swipedAt));
+
+  // Stale = enabled topic never scanned, or last scan > 60 min ago (4x the
+  // 15-minute cron cadence from migration 0024).
+  const staleCutoffMs = Date.now() - 60 * 60_000;
+  interface TopicRow {
+    id: string;
+    requisition_external_id: string;
+    last_scanned_at: string | null;
+    integrations: { provider: string } | null;
+  }
+  const staleTopics = ((topics.data ?? []) as unknown as TopicRow[])
+    .filter((t) =>
+      !t.last_scanned_at || Date.parse(t.last_scanned_at) < staleCutoffMs
+    )
+    .map((t) => ({
+      topicId: t.id,
+      provider: t.integrations?.provider ?? 'unknown',
+      requisitionExternalId: t.requisition_external_id,
+      lastScannedAt: t.last_scanned_at,
+    }));
+
+  return {
+    connectionsByProvider: [...connectionsByProvider.entries()]
+      .map(([provider, count]) => ({ provider, count }))
+      .sort((a, b) => b.count - a.count),
+    recentFailures,
+    staleTopics,
+  };
+}
+
 export {
   bucketByDay,
   ENTITLED,
