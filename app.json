@@ -64,6 +64,12 @@
         "projectId": "bf856ec0-7478-4642-a2cd-c8ce165a143b"
       }
     },
-    "owner": "jdfan"
+    "owner": "jdfan",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bf856ec0-7478-4642-a2cd-c8ce165a143b"
+    }
   }
 }
