@@ -96,3 +96,12 @@ Deno.test('admin-api: 500 hides internal error details', async () => {
   assertEquals(res.status, 500);
   assertEquals(await res.json(), { error: 'internal error' });
 });
+
+Deno.test('admin-api: 500 (JSON) when the allowlist lookup throws', async () => {
+  const handler = makeHandler(deps({
+    isAdmin: () => Promise.reject(new Error('db down')),
+  }));
+  const res = await handler(post({ action: 'ping' }));
+  assertEquals(res.status, 500);
+  assertEquals(await res.json(), { error: 'internal error' });
+});

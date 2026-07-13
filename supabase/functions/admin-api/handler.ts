@@ -40,12 +40,18 @@ export function makeHandler(
       return jsonResponse({ error: 'method not allowed' }, 405);
     }
 
-    const email = await deps.getEmail(req);
-    if (!email) {
-      return jsonResponse({ error: 'invalid token' }, 401);
-    }
-    if (!(await deps.isAdmin(email))) {
-      return jsonResponse({ error: 'not an admin' }, 403);
+    let email: string | null;
+    try {
+      email = await deps.getEmail(req);
+      if (!email) {
+        return jsonResponse({ error: 'invalid token' }, 401);
+      }
+      if (!(await deps.isAdmin(email))) {
+        return jsonResponse({ error: 'not an admin' }, 403);
+      }
+    } catch (err) {
+      console.error('admin-api gate failed:', err);
+      return jsonResponse({ error: 'internal error' }, 500);
     }
 
     let body: { action?: unknown; params?: unknown };
