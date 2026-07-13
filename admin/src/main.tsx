@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { SignIn } from './routes/SignIn';
+import { Dashboard } from './routes/Dashboard';
 import './styles.css';
 
 // Tasks 8-10 replace these stubs with real routes.
@@ -18,7 +19,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/sign-in" element={<SignIn />} />
           <Route element={<Layout />}>
-            <Route path="/" element={<Stub name="Dashboard" />} />
+            <Route path="/" element={<Dashboard />} />
             <Route path="/users" element={<Stub name="Users" />} />
             <Route path="/users/:userId" element={<Stub name="User" />} />
             <Route path="/subscriptions" element={<Stub name="Subscriptions" />} />
