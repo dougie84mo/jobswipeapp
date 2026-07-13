@@ -174,6 +174,214 @@ export async function listSubscriptions(
   };
 }
 
+// ============================================================================
+// list_users
+// ============================================================================
+
+export async function listUsers(
+  admin: SupabaseClient<DB>,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const search = typeof params.search === 'string'
+    ? params.search.trim().toLowerCase()
+    : '';
+
+  const [authUsers, profiles, integrations, subs, memberships] = await Promise
+    .all([
+      listAuthUsers(admin),
+      admin.from('recruiter_profiles').select(
+        'user_id, display_name, org_name, created_at',
+      ),
+      admin.from('integrations').select('user_id'),
+      admin.from('subscriptions').select('user_id, plan, status'),
+      admin.from('team_members').select('user_id, teams(name)'),
+    ]);
+  firstError([profiles, integrations, subs, memberships]);
+
+  const emailByUser = new Map(authUsers.map((u) => [u.user_id, u.email]));
+
+  const connectionCounts = new Map<string, number>();
+  for (
+    const i of (integrations.data ?? []) as unknown as Array<
+      { user_id: string }
+    >
+  ) {
+    connectionCounts.set(i.user_id, (connectionCounts.get(i.user_id) ?? 0) + 1);
+  }
+
+  const planByUser = new Map<string, string>();
+  for (
+    const s of (subs.data ?? []) as unknown as Array<
+      { user_id: string; plan: string; status: string }
+    >
+  ) {
+    if (!ENTITLED.includes(s.status)) continue;
+    const current = planByUser.get(s.user_id);
+    if (
+      !current || PLAN_RANK.indexOf(s.plan) < PLAN_RANK.indexOf(current)
+    ) {
+      planByUser.set(s.user_id, s.plan);
+    }
+  }
+
+  const teamsByUser = new Map<string, string[]>();
+  for (
+    const m of (memberships.data ?? []) as unknown as Array<
+      { user_id: string; teams: { name: string } | null }
+    >
+  ) {
+    if (!m.teams) continue;
+    const list = teamsByUser.get(m.user_id) ?? [];
+    list.push(m.teams.name);
+    teamsByUser.set(m.user_id, list);
+  }
+
+  interface ProfileRow {
+    user_id: string;
+    display_name: string | null;
+    org_name: string | null;
+    created_at: string;
+  }
+  const users = ((profiles.data ?? []) as unknown as ProfileRow[])
+    .map((p) => ({
+      userId: p.user_id,
+      email: emailByUser.get(p.user_id) ?? '',
+      displayName: p.display_name,
+      orgName: p.org_name,
+      createdAt: p.created_at,
+      plan: planByUser.get(p.user_id) ?? 'freelancer',
+      connectionCount: connectionCounts.get(p.user_id) ?? 0,
+      teamNames: teamsByUser.get(p.user_id) ?? [],
+    }))
+    .filter((u) =>
+      !search || u.email.includes(search) ||
+      (u.displayName ?? '').toLowerCase().includes(search)
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  return { users };
+}
+
+// ============================================================================
+// get_user
+// ============================================================================
+
+export async function getUser(
+  admin: SupabaseClient<DB>,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const userId = typeof params.userId === 'string' ? params.userId : '';
+  if (!userId) throw new Error('get_user: userId is required');
+
+  const [
+    authUsers,
+    profile,
+    subs,
+    integrations,
+    memberships,
+    tokens,
+    swipeCount,
+    gradeCount,
+  ] = await Promise.all([
+    listAuthUsers(admin),
+    admin.from('recruiter_profiles').select('display_name, org_name')
+      .eq('user_id', userId).maybeSingle(),
+    admin.from('subscriptions').select(
+      'plan, status, seats, current_period_end, stripe_customer_id',
+    ).eq('user_id', userId),
+    // provider/label/timestamps ONLY — never credential columns.
+    admin.from('integrations').select(
+      'id, provider, display_label, connected_at, shared_team_id',
+    ).eq('user_id', userId),
+    admin.from('team_members').select('team_id, role, teams(name)')
+      .eq('user_id', userId),
+    admin.from('device_tokens').select('platform, device_name, last_seen_at')
+      .eq('user_id', userId),
+    admin.from('swipes').select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    admin.from('candidate_grades').select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+  ]);
+  firstError([profile, subs, integrations, memberships, tokens]);
+
+  const authUser = authUsers.find((u) => u.user_id === userId);
+  if (!authUser) throw new Error('get_user: no such user');
+
+  interface IntegrationRow {
+    id: string;
+    provider: string;
+    display_label: string | null;
+    connected_at: string;
+    shared_team_id: string | null;
+  }
+  interface MembershipRow {
+    team_id: string;
+    role: string;
+    teams: { name: string } | null;
+  }
+  interface TokenRow {
+    platform: string;
+    device_name: string | null;
+    last_seen_at: string;
+  }
+  interface SubRow {
+    plan: string;
+    status: string;
+    seats: number;
+    current_period_end: string | null;
+    stripe_customer_id: string;
+  }
+
+  const profileRow = profile.data as unknown as (
+    | { display_name: string | null; org_name: string | null }
+    | null
+  );
+
+  return {
+    user: {
+      userId,
+      email: authUser.email,
+      createdAt: authUser.created_at,
+      lastSignInAt: authUser.last_sign_in_at,
+    },
+    profile: {
+      displayName: profileRow?.display_name ?? null,
+      orgName: profileRow?.org_name ?? null,
+    },
+    subscriptions: ((subs.data ?? []) as unknown as SubRow[]).map((s) => ({
+      plan: s.plan,
+      status: s.status,
+      seats: s.seats,
+      currentPeriodEnd: s.current_period_end,
+      stripeCustomerId: s.stripe_customer_id,
+    })),
+    integrations: ((integrations.data ?? []) as unknown as IntegrationRow[])
+      .map((i) => ({
+        id: i.id,
+        provider: i.provider,
+        displayLabel: i.display_label,
+        connectedAt: i.connected_at,
+        sharedTeamId: i.shared_team_id,
+      })),
+    teams: ((memberships.data ?? []) as unknown as MembershipRow[]).map(
+      (m) => ({
+        teamId: m.team_id,
+        name: m.teams?.name ?? '',
+        role: m.role,
+      }),
+    ),
+    deviceTokens: ((tokens.data ?? []) as unknown as TokenRow[]).map((t) => ({
+      platform: t.platform,
+      deviceName: t.device_name,
+      lastSeenAt: t.last_seen_at,
+    })),
+    counts: {
+      swipes: swipeCount.count ?? 0,
+      grades: gradeCount.count ?? 0,
+    },
+  };
+}
+
 export {
   bucketByDay,
   ENTITLED,
