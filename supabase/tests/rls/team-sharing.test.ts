@@ -94,7 +94,7 @@ Deno.test("RLS: team sharing grants teammate access and revokes on leave", async
       user_id: userA,
       stripe_customer_id: "cus_test",
       stripe_subscription_id: `sub_test_${run}`,
-      plan: "team",
+      plan: "team_pro",
       status: "active",
       seats: 5,
     });
