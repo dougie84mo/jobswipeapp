@@ -52,7 +52,8 @@
           "project": "recruit-swipe",
           "url": "https://sentry.io/"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
