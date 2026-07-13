@@ -109,7 +109,13 @@ export async function callAdminApi<T>(
     body: JSON.stringify({ action, params }),
   });
 
-  const body: unknown = await res.json();
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // Non-JSON body (gateway error page, empty body) — fall through; the
+    // !res.ok branch below reports the HTTP status.
+  }
   if (!res.ok) {
     const message =
       typeof body === 'object' && body !== null && 'error' in body
