@@ -11,6 +11,32 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-07-13 — Web admin panel (phase 1, read-only)
+
+### Added
+- **Admin panel** (`admin/` — Vite + React + TS strict, deployed separately to
+  Vercel): sign-in with existing Supabase auth, then Dashboard (signups/swipes
+  14d, active-7d, paid-by-plan), Users (+ per-user detail), Subscriptions, and
+  Integration health (connections by provider, swipe-action failures 7d, stale
+  notification topics). Read-only throughout.
+- **`admin-api` edge function** — the panel's only data source. JWT-authed,
+  then the caller's email must be in the new `admin_users` allowlist
+  (migration `0025`; RLS on with no policies = service-role-only, seeded with
+  the founder). Runs read-only queries with the service role; never returns
+  credentials or Vault contents. Unknown actions 400; internals never echoed
+  (500 = generic). Gate + dispatch are Deno-unit-tested; RLS suite asserts
+  admin_users is invisible to authenticated users.
+- **`admin_list_auth_users()`** — SECURITY DEFINER helper (service_role-only)
+  packaging auth.users (id, email, created_at, last_sign_in_at) for the panel,
+  since PostgREST doesn't expose the auth schema.
+
+### Notes
+- Phase 2 (mutations: comp plan, manage admins, delete user + audit log) is
+  spec'd but deliberately not built — see
+  docs/superpowers/specs/2026-07-12-admin-panel-design.md.
+- Deploy: `db push` (0025) + `functions deploy admin-api`; panel: Vercel
+  project with root dir `admin/`, env VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
+
 ## 2026-07-09 — Four-tier pricing
 
 ### Changed
