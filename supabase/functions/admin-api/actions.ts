@@ -302,7 +302,15 @@ export async function getUser(
     admin.from('candidate_grades').select('id', { count: 'exact', head: true })
       .eq('user_id', userId),
   ]);
-  firstError([profile, subs, integrations, memberships, tokens]);
+  firstError([
+    profile,
+    subs,
+    integrations,
+    memberships,
+    tokens,
+    swipeCount,
+    gradeCount,
+  ]);
 
   const authUser = authUsers.find((u) => u.user_id === userId);
   if (!authUser) throw new Error('get_user: no such user');
