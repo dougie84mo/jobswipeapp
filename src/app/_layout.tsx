@@ -6,8 +6,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { SessionProvider } from '@/features/auth/SessionProvider';
 import { queryClient } from '@/lib/query-client';
+import { initSentry, Sentry } from '@/lib/sentry';
 
-export default function RootLayout() {
+// Initialize Sentry as early as possible so errors during the first render are
+// captured. No-op until EXPO_PUBLIC_SENTRY_DSN is set.
+initSentry();
+
+function RootLayout() {
   const colorScheme = useColorScheme();
   return (
     // GestureHandlerRootView is required for react-native-gesture-handler to
@@ -24,3 +29,7 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap adds error-boundary + navigation instrumentation around the
+// root. It's a passthrough when Sentry isn't initialized (no DSN yet).
+export default Sentry.wrap(RootLayout);

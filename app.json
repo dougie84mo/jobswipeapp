@@ -44,6 +44,14 @@
         {
           "defaultChannel": "default"
         }
+      ],
+      [
+        "@sentry/react-native",
+        {
+          "organization": "highly-fresh-tech",
+          "project": "recruit-swipe",
+          "url": "https://sentry.io/"
+        }
       ]
     ],
     "experiments": {
