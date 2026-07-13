@@ -297,3 +297,44 @@ Deno.test("RLS: user B cannot read or write user A data", async () => {
     if (userB) await service.auth.admin.deleteUser(userB);
   }
 });
+
+Deno.test("RLS: admin_users is invisible to authenticated users", async () => {
+  const service = createClient<DB>(URL, SERVICE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const email = `rls-admin-${crypto.randomUUID()}@example.test`;
+  let userId = "";
+
+  try {
+    userId = await createUser(service, email);
+    const token = await signIn(email);
+    const me = anonClient(token);
+
+    // RLS enabled with no policies: SELECT succeeds but returns zero rows.
+    const { data: rows, error: selErr } = await me
+      .from("admin_users")
+      .select("email");
+    assertEquals(selErr, null);
+    assertEquals(rows ?? [], []);
+
+    // ...even though the seeded founder row exists (visible to service role).
+    const { data: seeded } = await service
+      .from("admin_users")
+      .select("email")
+      .eq("email", "douglasrich9215@gmail.com");
+    assertEquals((seeded ?? []).length, 1);
+
+    // Writes are rejected outright.
+    const { error: insErr } = await me
+      .from("admin_users")
+      .insert({ email: "evil@example.test" });
+    assert(insErr !== null);
+
+    // The auth-users helper is not executable by authenticated users.
+    const { error: rpcErr } = await me.rpc("admin_list_auth_users");
+    assert(rpcErr !== null);
+  } finally {
+    if (userId) await service.auth.admin.deleteUser(userId);
+  }
+});
