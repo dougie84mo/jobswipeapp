@@ -3,14 +3,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { SignIn } from './routes/SignIn';
 import { Dashboard } from './routes/Dashboard';
-import { Users } from './routes/Users';
+import { Health } from './routes/Health';
+import { SignIn } from './routes/SignIn';
+import { Subscriptions } from './routes/Subscriptions';
 import { UserDetail } from './routes/UserDetail';
+import { Users } from './routes/Users';
 import './styles.css';
-
-// Tasks 8-10 replace these stubs with real routes.
-const Stub = ({ name }: { name: string }) => <h2>{name} — coming in a later task</h2>;
 
 const queryClient = new QueryClient();
 
@@ -24,8 +23,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<Dashboard />} />
             <Route path="/users" element={<Users />} />
             <Route path="/users/:userId" element={<UserDetail />} />
-            <Route path="/subscriptions" element={<Stub name="Subscriptions" />} />
-            <Route path="/health" element={<Stub name="Health" />} />
+            <Route path="/subscriptions" element={<Subscriptions />} />
+            <Route path="/health" element={<Health />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
