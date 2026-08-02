@@ -77,3 +77,9 @@ verify_jwt = false
 
 [functions.billing-return]
 verify_jwt = false
+
+# The marketing site (recruiterswipe.com) is static and its visitors are
+# anonymous, so there's no JWT to verify. The function gates on an Origin
+# allowlist, a honeypot, time-on-form, and a per-IP rate limit instead.
+[functions.website-lead]
+verify_jwt = false

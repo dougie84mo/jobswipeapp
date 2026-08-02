@@ -11,6 +11,52 @@ workable, recruitee, teamtailor, manatal, bamboohr, smartrecruiters, jazzhr) ·
 **2 experimental** (icims, workday — read scaffolds, `ready:false`, unverified
 pending partner sandbox) · **2 partner-delegated** (indeed, ziprecruiter).
 
+## 2026-08-02 — Marketing website (separate repo) + lead capture
+
+### Added
+- **Public marketing site** at **recruiterswipe.com**, in its own repo
+  (`recruiter-swipe-website`, sibling directory, remote
+  `dougie84mo/recruiter-swipe-website`). Astro 7 + Tailwind 4, static output,
+  self-hosted fonts, zero third-party requests. 36 routes: home, how it works,
+  pricing, security, for-ATS-partners, an integrations directory with a page
+  per provider, docs (recruiter guides + partner/API docs), the app page,
+  early-access / partner-apply / contact forms, privacy, terms, 404.
+  Deploys by GitHub Actions force-pushing `dist/` contents to a `deploy`
+  branch that Hostinger's Git deployment pulls into `public_html`.
+  **This clears the "no public website" blocker** in
+  `prompts/outreach/_TRACKER.md`, which gates the Greenhouse, Ashby, iCIMS and
+  Workday partner applications; Lever's sandbox form can now cite
+  `https://recruiterswipe.com/brand/logo-square.png` as its square logo URL.
+- **`website_leads` table** (migration `0026`) — enquiries from the site's three
+  forms. Not user-scoped (visitors are anonymous), so RLS is enabled with **no
+  policies at all**: every client role is denied and the service role is the
+  only reader/writer. Form answers land in `fields jsonb`, so adding a field to
+  a form needs no migration.
+- **`website-lead` edge function** — no-JWT (the site is static and its visitors
+  are anonymous, so the anon key proves nothing). Gates on an Origin allowlist,
+  a honeypot field, minimum time-on-form, a per-IP rate limit, and field size
+  caps; inserts with the service role and sends a notification via Resend.
+  Responses are deliberately uninformative about which check rejected a
+  submission.
+- **`supabase/tests/rls/website-leads.test.ts`** — asserts anon *and*
+  authenticated clients can neither read, insert, update, nor delete
+  `website_leads`, so a later migration cannot quietly add a permissive policy.
+
+### Notes
+- The site's `src/data/integrations.ts` mirrors this repo's provider table, and
+  is bound by an accuracy rule: no page claims a capability an adapter reports
+  as false, and no integration is described as verified — none have been run
+  against a vendor sandbox yet. Deliberately-withheld writes (Ashby reject,
+  Teamtailor notes/tags, Manatal stage) are listed with the reason.
+- This repo was **not** restructured for the split. The Expo app stays at the
+  root; moving it would touch EAS config, `.easignore`, jest, eslint, all three
+  CI jobs, and the Supabase CLI's root expectations for no functional gain.
+- Pending on the operator: point the domain at Hostinger and deploy, create the
+  four mailboxes, verify the Resend sending domain and set `RESEND_API_KEY` /
+  `LEAD_NOTIFY_EMAIL`, set the two `PUBLIC_SUPABASE_*` GitHub Actions variables,
+  and get `/privacy` + `/terms` reviewed by counsel (both pages list what is
+  outstanding in a visible panel rather than hiding placeholders).
+
 ## 2026-07-13 — Web admin panel (phase 1, read-only)
 
 ### Added
