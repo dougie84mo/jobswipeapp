@@ -138,8 +138,11 @@ async function notify(
 ): Promise<void> {
   const apiKey = Deno.env.get('RESEND_API_KEY');
   const to = Deno.env.get('LEAD_NOTIFY_EMAIL');
+  // Sends from a dedicated subdomain so outbound reputation is isolated from
+  // the root domain's mailboxes (same split as mail.theluxmirror.com). Replies
+  // go to the enquirer, not here — see reply_to below.
   const from = Deno.env.get('LEAD_FROM_EMAIL') ??
-    'Recruit Swipe <notifications@recruiterswipe.com>';
+    'Recruit Swipe <notifications@mail.recruiterswipe.com>';
   if (!apiKey || !to) return;
 
   const rows = Object.entries(fields)
